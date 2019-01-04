@@ -59,6 +59,12 @@ import org.apache.spark.util.{CallSite, ShutdownHookManager, ThreadUtils, Utils}
  * using `context.start()` and `context.stop()`, respectively.
  * `context.awaitTermination()` allows the current thread to wait for the termination
  * of the context by `stop()` or by an exception.
+  * Spark流功能的主要入口点。它提供了用于创建[org.apache.spark.stream.dstream]的方法。
+  * 从各种输入来源。它既可以通过提供Spark主URL和appName创建，也可以通过org.apache.spark创建。
+  * SparkConf配置(请参阅核心Spark文档)，或来自现有的org.apache.spark.SparkContext。
+  * 可以使用“context.sparkContext”访问关联的SparkContext。
+  * 在创建和转换DStreams之后，可以分别使用context.start()和context.stop()启动和停止流计算。
+  * ' context. awaittermination() '允许当前线程通过' stop() '或异常等待上下文的终止。
  */
 class StreamingContext private[streaming] (
     _sc: SparkContext,
@@ -68,8 +74,10 @@ class StreamingContext private[streaming] (
 
   /**
    * Create a StreamingContext using an existing SparkContext.
+    * 使用现有的SparkContext创建StreamingContext。
    * @param sparkContext existing SparkContext
    * @param batchDuration the time interval at which streaming data will be divided into batches
+    *                      流数据被分成批的时间间隔
    */
   def this(sparkContext: SparkContext, batchDuration: Duration) = {
     this(sparkContext, null, batchDuration)
@@ -77,6 +85,7 @@ class StreamingContext private[streaming] (
 
   /**
    * Create a StreamingContext by providing the configuration necessary for a new SparkContext.
+    * 通过提供新SparkContext所需的配置来创建StreamingContext。
    * @param conf a org.apache.spark.SparkConf object specifying Spark parameters
    * @param batchDuration the time interval at which streaming data will be divided into batches
    */
@@ -86,8 +95,11 @@ class StreamingContext private[streaming] (
 
   /**
    * Create a StreamingContext by providing the details necessary for creating a new SparkContext.
+    * 通过提供创建新SparkContext所需的详细信息来创建StreamingContext。
    * @param master cluster URL to connect to (e.g. mesos://host:port, spark://host:port, local[4]).
+    *               要连接的集群URL(例如mesos://host:port, spark://host:port, local[4])
    * @param appName a name for your job, to display on the cluster web UI
+    *                要在群集web UI上显示的作业的名称
    * @param batchDuration the time interval at which streaming data will be divided into batches
    */
   def this(
@@ -102,23 +114,26 @@ class StreamingContext private[streaming] (
   }
 
   /**
-   * Recreate a StreamingContext from a checkpoint file.
+   * Recreate a StreamingContext from a checkpoint file.    从检查点文件重新创建StreamingContext
    * @param path Path to the directory that was specified as the checkpoint directory
-   * @param hadoopConf Optional, configuration object if necessary for reading from
-   *                   HDFS compatible filesystems
+    *             指定为检查点目录的目录的路径
+   * @param hadoopConf Optional, configuration object if necessary for reading from HDFS compatible filesystems
+   *              可选的，如果需要从HDFS兼容文件系统中读取，则配置对象
    */
   def this(path: String, hadoopConf: Configuration) =
     this(null, CheckpointReader.read(path, new SparkConf(), hadoopConf).orNull, null)
 
   /**
-   * Recreate a StreamingContext from a checkpoint file.
+   * Recreate a StreamingContext from a checkpoint file.    从检查点文件重新创建StreamingContext
    * @param path Path to the directory that was specified as the checkpoint directory
    */
   def this(path: String) = this(path, SparkHadoopUtil.get.conf)
 
   /**
    * Recreate a StreamingContext from a checkpoint file using an existing SparkContext.
+    * 使用现有的SparkContext从检查点文件重新创建StreamingContext。
    * @param path Path to the directory that was specified as the checkpoint directory
+    *             指定为检查点目录的目录的路径
    * @param sparkContext Existing SparkContext
    */
   def this(path: String, sparkContext: SparkContext) = {
@@ -128,6 +143,7 @@ class StreamingContext private[streaming] (
       null)
   }
 
+  // Spark流不能同时使用SparkContext和检查点初始化为null
   require(_sc != null || _cp != null,
     "Spark Streaming cannot be initialized with both SparkContext and checkpoint as null")
 
@@ -143,6 +159,9 @@ class StreamingContext private[streaming] (
     }
   }
 
+  /**
+    *master应设置为local[n]，在local模式下，如果有接收方要获取数据，则n > 1，否则Spark作业将无法获取资源来处理接收到的数据。
+   */
   if (sc.conf.get("spark.master") == "local" || sc.conf.get("spark.master") == "local[1]") {
     logWarning("spark.master should be set as local[n], n > 1 in local mode if you have receivers" +
       " to get data, otherwise Spark jobs will not get resources to process the received data.")
@@ -193,7 +212,7 @@ class StreamingContext private[streaming] (
       None
     }
 
-  /* Initializing a streamingSource to register metrics */
+  /* Initializing a streamingSource to register metrics 初始化streamingSource以注册指标*/
   private val streamingSource = new StreamingSource(this)
 
   private var state: StreamingContextState = INITIALIZED
@@ -202,6 +221,7 @@ class StreamingContext private[streaming] (
 
   // Copy of thread-local properties from SparkContext. These properties will be set in all tasks
   // submitted by this StreamingContext after start.
+  // 从SparkContext复制线程本地属性。这些属性将在启动后由StreamingContext提交的所有任务中设置。
   private[streaming] val savedProperties = new AtomicReference[Properties](new Properties)
 
   private[streaming] def getStartSite(): CallSite = startSite.get()
@@ -211,7 +231,7 @@ class StreamingContext private[streaming] (
   conf.getOption("spark.streaming.checkpoint.directory").foreach(checkpoint)
 
   /**
-   * Return the associated Spark context
+   * Return the associated Spark context  返回关联的Spark上下文
    */
   def sparkContext: SparkContext = sc
 
@@ -220,7 +240,11 @@ class StreamingContext private[streaming] (
    * DStreams remember RDDs only for a limited duration of time and release them for garbage
    * collection. This method allows the developer to specify how long to remember the RDDs (
    * if the developer wishes to query old data outside the DStream computation).
-   * @param duration Minimum duration that each DStream should remember its RDDs
+    * 在此上下文中设置每个DStream，以记住它在最后给定的持续时间中生成的RDDs。
+    * DStreams只在有限的时间内记住RDDs，并释放它们进行垃圾收集。
+    * 此方法允许开发人员指定多长时间记住RDDs(如果开发人员希望在DStream计算之外查询旧数据)。
+    * @param duration Minimum duration that each DStream should remember its RDDs
+    *                 每个DStream应该记住它的RDDs的最小持续时间
    */
   def remember(duration: Duration) {
     graph.remember(duration)
@@ -229,8 +253,11 @@ class StreamingContext private[streaming] (
   /**
    * Set the context to periodically checkpoint the DStream operations for driver
    * fault-tolerance.
+    * 将上下文设置为定期检查DStream操作以实现驱动程序容错。
    * @param directory HDFS-compatible directory where the checkpoint data will be reliably stored.
+    *                  与hdfs兼容的目录，检查点数据将可靠地存储在该目录中。
    *                  Note that this must be a fault-tolerant file system like HDFS.
+    *                  注意，这必须是一个容错的文件系统，如HDFS。
    */
   def checkpoint(directory: String) {
     if (directory != null) {
@@ -258,7 +285,7 @@ class StreamingContext private[streaming] (
   /**
    * Execute a block of code in a scope such that all new DStreams created in this body will
    * be part of the same scope. For more detail, see the comments in `doCompute`.
-   *
+   *在一个范围内执行一段代码，使在此主体中创建的所有新DStreams都属于同一范围。有关更多细节，请参见“doCompute”中的注释。
    * Note: Return statements are NOT allowed in the given body.
    */
   private[streaming] def withScope[U](body: => U): U = sparkContext.withScope(body)
