@@ -30,46 +30,48 @@ import org.apache.spark.storage.StreamBlockId
 import org.apache.spark.util.{ThreadUtils, Utils}
 
 /**
- * Abstract class that is responsible for supervising a Receiver in the worker.
+ * Abstract class that is responsible for supervising a Receiver in the worker.  抽象类，该类负责监视worker中的接收者。
  * It provides all the necessary interfaces for handling the data received by the receiver.
+  * 它提供了处理接收方接收的数据所需的所有接口。
  */
 private[streaming] abstract class ReceiverSupervisor(
     receiver: Receiver[_],
     conf: SparkConf
   ) extends Logging {
 
-  /** Enumeration to identify current state of the Receiver */
+  /** Enumeration to identify current state of the Receiver  枚举以标识接收器的当前状态*/
   object ReceiverState extends Enumeration {
     type CheckpointState = Value
     val Initialized, Started, Stopped = Value
   }
   import ReceiverState._
 
-  // Attach the supervisor to the receiver
+  // Attach the supervisor to the receiver  把主管和接收者连在一起
   receiver.attachSupervisor(this)
 
   private val futureExecutionContext = ExecutionContext.fromExecutorService(
     ThreadUtils.newDaemonCachedThreadPool("receiver-supervisor-future", 128))
 
-  /** Receiver id */
+  /** Receiver id  接收机id*/
   protected val streamId = receiver.streamId
 
-  /** Has the receiver been marked for stop. */
+  /** Has the receiver been marked for stop. 收报机已作停止标志了吗?*/
   private val stopLatch = new CountDownLatch(1)
 
-  /** Time between a receiver is stopped and started again */
+  /** Time between a receiver is stopped and started again  接收器之间的时间停止并重新启动*/
   private val defaultRestartDelay = conf.getInt("spark.streaming.receiverRestartDelay", 2000)
 
-  /** The current maximum rate limit for this receiver. */
+  /** The current maximum rate limit for this receiver. 此接收器的当前最大速率限制。*/
   private[streaming] def getCurrentRateLimit: Long = Long.MaxValue
 
-  /** Exception associated with the stopping of the receiver */
+  /** Exception associated with the stopping of the receiver  与接收器停止相关的异常*/
   @volatile protected var stoppingError: Throwable = null
 
-  /** State of the receiver */
+  /** State of the receiver  接收机状态*/
   @volatile private[streaming] var receiverState = Initialized
 
-  /** Push a single data item to backend data store. */
+  /** Push a single data item to backend data store.
+    * 将单个数据项推送到后端数据存储。*/
   def pushSingle(data: Any): Unit
 
   /** Store the bytes of received data as a data block into Spark's memory. */
@@ -86,7 +88,8 @@ private[streaming] abstract class ReceiverSupervisor(
       optionalBlockId: Option[StreamBlockId]
     ): Unit
 
-  /** Store an ArrayBuffer of received data as a data block into Spark's memory. */
+  /** Store an ArrayBuffer of received data as a data block into Spark's memory.
+    * 将接收数据的ArrayBuffer作为数据块存储到Spark的内存中。 */
   def pushArrayBuffer(
       arrayBuffer: ArrayBuffer[_],
       optionalMetadata: Option[Any],
@@ -122,16 +125,16 @@ private[streaming] abstract class ReceiverSupervisor(
   /** Called when receiver is started. Return true if the driver accepts us */
   protected def onReceiverStart(): Boolean
 
-  /** Called when receiver is stopped */
+  /** Called when receiver is stopped  当接收器停止时调用*/
   protected def onReceiverStop(message: String, error: Option[Throwable]) { }
 
-  /** Start the supervisor */
+  /** Start the supervisor  开始主管*/
   def start() {
     onStart()
     startReceiver()
   }
 
-  /** Mark the supervisor and the receiver for stopping */
+  /** Mark the supervisor and the receiver for stopping  在主管和接收人停车时作记号*/
   def stop(message: String, error: Option[Throwable]) {
     stoppingError = error.orNull
     stopReceiver(message, error)
@@ -140,9 +143,10 @@ private[streaming] abstract class ReceiverSupervisor(
     stopLatch.countDown()
   }
 
-  /** Start receiver */
+  /** Start receiver  开始接收*/
   def startReceiver(): Unit = synchronized {
     try {
+      // 先调用子类的onreceiverstart方法进行注册，如果注册成功，则继续进行流数据接收器receiver启动
       if (onReceiverStart()) {
         logInfo(s"Starting receiver $streamId")
         receiverState = Started
@@ -158,7 +162,7 @@ private[streaming] abstract class ReceiverSupervisor(
     }
   }
 
-  /** Stop receiver */
+  /** Stop receiver 停止接受*/
   def stopReceiver(message: String, error: Option[Throwable]): Unit = synchronized {
     try {
       logInfo("Stopping receiver with message: " + message + ": " + error.getOrElse(""))
@@ -179,7 +183,7 @@ private[streaming] abstract class ReceiverSupervisor(
     }
   }
 
-  /** Restart receiver with delay */
+  /** Restart receiver with delay  延时重启接收机*/
   def restartReceiver(message: String, error: Option[Throwable] = None) {
     restartReceiver(message, error, defaultRestartDelay)
   }
@@ -200,7 +204,7 @@ private[streaming] abstract class ReceiverSupervisor(
     }(futureExecutionContext)
   }
 
-  /** Check if receiver has been marked for starting */
+  /** Check if receiver has been marked for starting  检查接收器是否已标记启动*/
   def isReceiverStarted(): Boolean = {
     logDebug("state = " + receiverState)
     receiverState == Started
@@ -213,7 +217,7 @@ private[streaming] abstract class ReceiverSupervisor(
   }
 
 
-  /** Wait the thread until the supervisor is stopped */
+  /** Wait the thread until the supervisor is stopped  等待线程，直到监控器停止*/
   def awaitTermination() {
     logInfo("Waiting for receiver to be stopped")
     stopLatch.await()

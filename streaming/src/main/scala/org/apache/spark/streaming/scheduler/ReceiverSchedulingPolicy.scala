@@ -60,18 +60,20 @@ private[streaming] class ReceiverSchedulingPolicy {
    * Try our best to schedule receivers with evenly distributed. However, if the
    * `preferredLocation`s of receivers are not even, we may not be able to schedule them evenly
    * because we have to respect them.
+    * 尽我们最大的努力使接收器分布均匀。然而，如果接收方的优先位置不是均匀的，
+    * 我们可能无法均匀地安排它们，因为我们必须尊重它们。
    *
-   * Here is the approach to schedule executors:
+   * Here is the approach to schedule executors: 下面是调度执行器的方法:
    * <ol>
    *   <li>First, schedule all the receivers with preferred locations (hosts), evenly among the
-   *       executors running on those host.</li>
+   *       executors running on those host.</li>  首先，调度所有具有首选位置(主机)的接收方，在这些主机上运行的执行器之间平均分配。
    *   <li>Then, schedule all other receivers evenly among all the executors such that overall
-   *       distribution over all the receivers is even.</li>
+   *       distribution over all the receivers is even.</li> 然后，在所有执行器中均匀地调度所有其他接收器，使所有接收器的总体分布均匀。
    * </ol>
    *
    * This method is called when we start to launch receivers at the first time.
-   *
-   * @return a map for receivers and their scheduled locations
+   * 这个方法在我们第一次发射接收器的时候调用。
+   * @return a map for receivers and their scheduled locations  接收器及其预定位置的地图
    */
   def scheduleReceivers(
       receivers: Seq[Receiver[_]],

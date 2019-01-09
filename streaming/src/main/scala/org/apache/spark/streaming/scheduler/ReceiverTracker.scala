@@ -35,7 +35,8 @@ import org.apache.spark.streaming.util.WriteAheadLogUtils
 import org.apache.spark.util.{SerializableConfiguration, ThreadUtils, Utils}
 
 
-/** Enumeration to identify current state of a Receiver */
+/** Enumeration to identify current state of a Receiver
+  * 枚举以标识接收器的当前状态*/
 private[streaming] object ReceiverState extends Enumeration {
   type ReceiverState = Value
   val INACTIVE, SCHEDULED, ACTIVE = Value
@@ -44,6 +45,7 @@ private[streaming] object ReceiverState extends Enumeration {
 /**
  * Messages used by the NetworkReceiver and the ReceiverTracker to communicate
  * with each other.
+  * 由网络接收方和接收方跟踪方用来相互通信的消息。
  */
 private[streaming] sealed trait ReceiverTrackerMessage
 private[streaming] case class RegisterReceiver(
@@ -61,11 +63,13 @@ private[streaming] case class DeregisterReceiver(streamId: Int, msg: String, err
 
 /**
  * Messages used by the driver and ReceiverTrackerEndpoint to communicate locally.
+  * 驱动程序和ReceiverTrackerEndpoint用于本地通信的消息。
  */
 private[streaming] sealed trait ReceiverTrackerLocalMessage
 
 /**
  * This message will trigger ReceiverTrackerEndpoint to restart a Spark job for the receiver.
+  * 此消息将触发ReceiverTrackerEndpoint重新启动接收方的Spark作业。
  */
 private[streaming] case class RestartReceiver(receiver: Receiver[_])
   extends ReceiverTrackerLocalMessage
@@ -73,6 +77,7 @@ private[streaming] case class RestartReceiver(receiver: Receiver[_])
 /**
  * This message is sent to ReceiverTrackerEndpoint when we start to launch Spark jobs for receivers
  * at the first time.
+  * 当我们第一次开始为接收者启动Spark作业时，此消息被发送到ReceiverTrackerEndpoint。
  */
 private[streaming] case class StartAllReceivers(receiver: Seq[Receiver[_]])
   extends ReceiverTrackerLocalMessage
@@ -80,12 +85,14 @@ private[streaming] case class StartAllReceivers(receiver: Seq[Receiver[_]])
 /**
  * This message will trigger ReceiverTrackerEndpoint to send stop signals to all registered
  * receivers.
+  * 此消息将触发ReceiverTrackerEndpoint向所有注册的接收方发送停止信号。
  */
 private[streaming] case object StopAllReceivers extends ReceiverTrackerLocalMessage
 
 /**
  * A message used by ReceiverTracker to ask all receiver's ids still stored in
  * ReceiverTrackerEndpoint.
+  * ReceiverTracker使用的一条消息，询问所有仍然存储在ReceiverTrackerEndpoint中的接收者的id。
  */
 private[streaming] case object AllReceiverIds extends ReceiverTrackerLocalMessage
 
@@ -98,6 +105,9 @@ private[streaming] case object GetAllReceiverInfo extends ReceiverTrackerLocalMe
  * This class manages the execution of the receivers of ReceiverInputDStreams. Instance of
  * this class must be created after all input streams have been added and StreamingContext.start()
  * has been called because it needs the final set of input streams at the time of instantiation.
+  * 这个类管理ReceiverInputDStreams的接收者的执行。
+  * 必须在添加了所有输入流并调用StreamingContext.start()之后创建该类的实例，
+  * 因为它在实例化时需要最后一组输入流。
  *
  * @param skipReceiverLaunch Do not launch the receiver. This is useful for testing.
  */
@@ -116,39 +126,42 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
   )
   private val listenerBus = ssc.scheduler.listenerBus
 
-  /** Enumeration to identify current state of the ReceiverTracker */
+  /** Enumeration to identify current state of the ReceiverTracker
+    * 枚举以标识ReceiverTracker的当前状态*/
   object TrackerState extends Enumeration {
     type TrackerState = Value
     val Initialized, Started, Stopping, Stopped = Value
   }
   import TrackerState._
 
-  /** State of the tracker. Protected by "trackerStateLock" */
+  /** State of the tracker. Protected by "trackerStateLock"  跟踪器的状态。保护“trackerStateLock”*/
   @volatile private var trackerState = Initialized
 
-  // endpoint is created when generator starts.
-  // This not being null means the tracker has been started and not stopped
+  // endpoint is created when generator starts. 端点是在生成器启动时创建的。
+  // This not being null means the tracker has been started and not stopped  这不是null意味着跟踪器已经启动，而不是停止
   private var endpoint: RpcEndpointRef = null
 
-  private val schedulingPolicy = new ReceiverSchedulingPolicy()
+  private val schedulingPolicy = new ReceiverSchedulingPolicy()   // 调度策略
 
   // Track the active receiver job number. When a receiver job exits ultimately, countDown will
-  // be called.
+  // be called.  跟踪活动接收器作业编号。当接收方作业最终退出时，将调用倒计时。
   private val receiverJobExitLatch = new CountDownLatch(receiverInputStreams.length)
 
   /**
    * Track all receivers' information. The key is the receiver id, the value is the receiver info.
-   * It's only accessed in ReceiverTrackerEndpoint.
+    * 跟踪所有接收方的信息。键是接收者id，值是接收者信息。
+   * It's only accessed in ReceiverTrackerEndpoint. 它只能在ReceiverTrackerEndpoint中访问。
    */
   private val receiverTrackingInfos = new HashMap[Int, ReceiverTrackingInfo]
 
   /**
    * Store all preferred locations for all receivers. We need this information to schedule
    * receivers. It's only accessed in ReceiverTrackerEndpoint.
+    * 为所有接收器存储所有首选位置。我们需要这些信息来安排接收方。它只能在ReceiverTrackerEndpoint中访问。
    */
   private val receiverPreferredLocations = new HashMap[Int, Option[String]]
 
-  /** Start the endpoint and receiver execution thread. */
+  /** Start the endpoint and receiver execution thread.  启动端点和接收器执行线程。*/
   def start(): Unit = synchronized {
     if (isTrackerStarted) {
       throw new SparkException("ReceiverTracker already started")
@@ -163,17 +176,17 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     }
   }
 
-  /** Stop the receiver execution thread. */
+  /** Stop the receiver execution thread. 停止接收方执行线程。*/
   def stop(graceful: Boolean): Unit = synchronized {
     if (isTrackerStarted) {
-      // First, stop the receivers
+      // First, stop the receivers  首先，停止接收器
       trackerState = Stopping
       if (!skipReceiverLaunch) {
-        // Send the stop signal to all the receivers
+        // Send the stop signal to all the receivers  把停止信号发送给所有的接收器
         endpoint.askWithRetry[Boolean](StopAllReceivers)
 
-        // Wait for the Spark job that runs the receivers to be over
-        // That is, for the receivers to quit gracefully.
+        // Wait for the Spark job that runs the receivers to be over  等待运行接收器的Spark作业结束
+        // That is, for the receivers to quit gracefully. 也就是说，让接收者优雅地退出。
         receiverJobExitLatch.await(10, TimeUnit.SECONDS)
 
         if (graceful) {
@@ -182,7 +195,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
           logInfo("Waited for receiver job to terminate gracefully")
         }
 
-        // Check if all the receivers have been deregistered or not
+        // Check if all the receivers have been deregistered or not  检查所有接收方是否已注销注册
         val receivers = endpoint.askWithRetry[Seq[Int]](AllReceiverIds)
         if (receivers.nonEmpty) {
           logWarning("Not all of the receivers have deregistered, " + receivers)
@@ -191,7 +204,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
         }
       }
 
-      // Finally, stop the endpoint
+      // Finally, stop the endpoint 最后，停止端点
       ssc.env.rpcEnv.stop(endpoint)
       endpoint = null
       receivedBlockTracker.stop()
@@ -201,25 +214,26 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
       trackerState = Stopping
       // `ReceivedBlockTracker` is open when this instance is created. We should
       // close this even if this `ReceiverTracker` is not started.
+      // “ReceivedBlockTracker”在创建这个实例时是打开的。即使这个“ReceiverTracker”没有启动，我们也应该关闭它。
       receivedBlockTracker.stop()
       logInfo("ReceiverTracker stopped")
       trackerState = Stopped
     }
   }
 
-  /** Allocate all unallocated blocks to the given batch. */
+  /** Allocate all unallocated blocks to the given batch. 将所有未分配的块分配给给定批处理。*/
   def allocateBlocksToBatch(batchTime: Time): Unit = {
     if (receiverInputStreams.nonEmpty) {
       receivedBlockTracker.allocateBlocksToBatch(batchTime)
     }
   }
 
-  /** Get the blocks for the given batch and all input streams. */
+  /** Get the blocks for the given batch and all input streams. 获取给定批处理和所有输入流的块。*/
   def getBlocksOfBatch(batchTime: Time): Map[Int, Seq[ReceivedBlockInfo]] = {
     receivedBlockTracker.getBlocksOfBatch(batchTime)
   }
 
-  /** Get the blocks allocated to the given batch and stream. */
+  /** Get the blocks allocated to the given batch and stream. 获取分配给给定批处理和流的块。*/
   def getBlocksOfBatchAndStream(batchTime: Time, streamId: Int): Seq[ReceivedBlockInfo] = {
     receivedBlockTracker.getBlocksOfBatchAndStream(batchTime, streamId)
   }
@@ -227,12 +241,13 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
   /**
    * Clean up the data and metadata of blocks and batches that are strictly
    * older than the threshold time. Note that this does not
+    * 清除严格超过阈值时间的块和批的数据和元数据。请注意，这不是
    */
   def cleanupOldBlocksAndBatches(cleanupThreshTime: Time) {
     // Clean up old block and batch metadata
     receivedBlockTracker.cleanupOldBatches(cleanupThreshTime, waitForCompletion = false)
 
-    // Signal the receivers to delete old block data
+    // Signal the receivers to delete old block data  向接收端发出删除旧块数据的信号
     if (WriteAheadLogUtils.enableReceiverLog(ssc.conf)) {
       logInfo(s"Cleanup old received batch data: $cleanupThreshTime")
       synchronized {
@@ -244,8 +259,8 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
   }
 
   /**
-   * Get the executors allocated to each receiver.
-   * @return a map containing receiver ids to optional executor ids.
+   * Get the executors allocated to each receiver.  获取分配给每个接收方的执行器。
+   * @return a map containing receiver ids to optional executor ids. 包含接收者id到可选执行器id的映射。
    */
   def allocatedExecutors(): Map[Int, Option[String]] = synchronized {
     if (isTrackerStarted) {
@@ -263,7 +278,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     receiverInputStreams.size
   }
 
-  /** Register a receiver */
+  /** Register a receiver  注册一个接收器*/
   private def registerReceiver(
       streamId: Int,
       typ: String,
@@ -284,6 +299,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     val acceptableExecutors = if (scheduledLocations.nonEmpty) {
         // This receiver is registering and it's scheduled by
         // ReceiverSchedulingPolicy.scheduleReceivers. So use "scheduledLocations" to check it.
+      // 这个接收器正在注册，它由receiverscheduling policy . scheereceivers调度。所以使用“scheduledLocations”来检查它。
         scheduledLocations.get
       } else {
         // This receiver is scheduled by "ReceiverSchedulingPolicy.rescheduleReceiver", so calling
@@ -297,7 +313,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     }
 
     if (!isAcceptable) {
-      // Refuse it since it's scheduled to a wrong executor
+      // Refuse it since it's scheduled to a wrong executor  拒绝它，因为它被安排给了一个错误的执行人
       false
     } else {
       val name = s"${typ}-${streamId}"
@@ -315,7 +331,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     }
   }
 
-  /** Deregister a receiver */
+  /** Deregister a receiver  取消注册接收机*/
   private def deregisterReceiver(streamId: Int, message: String, error: String) {
     val lastErrorTime =
       if (error == null || error == "") -1 else ssc.scheduler.clock.getTimeMillis()
@@ -339,19 +355,19 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     logError(s"Deregistered receiver for stream $streamId: $messageWithError")
   }
 
-  /** Update a receiver's maximum ingestion rate */
+  /** Update a receiver's maximum ingestion rate  更新接收器的最大摄入速率*/
   def sendRateUpdate(streamUID: Int, newRate: Long): Unit = synchronized {
     if (isTrackerStarted) {
       endpoint.send(UpdateReceiverRateLimit(streamUID, newRate))
     }
   }
 
-  /** Add new blocks for the given stream */
+  /** Add new blocks for the given stream  为给定的流添加新的块*/
   private def addBlock(receivedBlockInfo: ReceivedBlockInfo): Boolean = {
     receivedBlockTracker.addBlock(receivedBlockInfo)
   }
 
-  /** Report error sent by a receiver */
+  /** Report error sent by a receiver 报告接收方发送的错误*/
   private def reportError(streamId: Int, message: String, error: String) {
     val newReceiverTrackingInfo = receiverTrackingInfos.get(streamId) match {
       case Some(oldInfo) =>
@@ -400,13 +416,13 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     receiverTrackingInfos.put(receiverId, newReceiverTrackingInfo)
   }
 
-  /** Check if any blocks are left to be processed */
+  /** Check if any blocks are left to be processed 检查是否还有要处理的块*/
   def hasUnallocatedBlocks: Boolean = {
     receivedBlockTracker.hasUnallocatedReceivedBlocks
   }
 
   /**
-   * Get the list of executors excluding driver
+   * Get the list of executors excluding driver  获取不包括驱动程序的执行器列表
    */
   private def getExecutors: Seq[ExecutorCacheTaskLocation] = {
     if (ssc.sc.isLocal) {
@@ -424,10 +440,13 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
   /**
    * Run the dummy Spark job to ensure that all slaves have registered. This avoids all the
    * receivers to be scheduled on the same node.
+    * 运行模拟的Spark作业，以确保所有从服务器都已注册。这避免了将所有接收器安排在同一个节点上。
    *
    * TODO Should poll the executor number and wait for executors according to
    * "spark.scheduler.minRegisteredResourcesRatio" and
    * "spark.scheduler.maxRegisteredResourcesWaitingTime" rather than running a dummy job.
+    * TODO应该轮询执行程序号，并根据“spark.scheduler”等待执行程序。minRegisteredResourcesRatio”
+    * 和“spark.scheduler。maxRegisteredResourcesWaitingTime“而不是运行一个虚拟作业”。
    */
   private def runDummySparkJob(): Unit = {
     if (!ssc.sparkContext.isLocal) {
@@ -439,6 +458,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
   /**
    * Get the receivers from the ReceiverInputDStreams, distributes them to the
    * worker nodes as a parallel collection, and runs them.
+    * 从ReceiverInputDStreams获取接收方，将它们作为并行集合分发到工作节点，并运行它们。
    */
   private def launchReceivers(): Unit = {
     val receivers = receiverInputStreams.map { nis =>
@@ -453,7 +473,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     endpoint.send(StartAllReceivers(receivers))
   }
 
-  /** Check if tracker has been marked for initiated */
+  /** Check if tracker has been marked for initiated 检查跟踪器是否已标记为已启动*/
   private def isTrackerInitialized: Boolean = trackerState == Initialized
 
   /** Check if tracker has been marked for starting */
@@ -465,7 +485,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
   /** Check if tracker has been marked for stopped */
   private def isTrackerStopped: Boolean = trackerState == Stopped
 
-  /** RpcEndpoint to receive messages from the receivers. */
+  /** RpcEndpoint to receive messages from the receivers.  RpcEndpoint接收来自接收者的消息*/
   private class ReceiverTrackerEndpoint(override val rpcEnv: RpcEnv) extends ThreadSafeRpcEndpoint {
 
     private val walBatchingThreadPool = ExecutionContext.fromExecutorService(
@@ -476,22 +496,25 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     override def receive: PartialFunction[Any, Unit] = {
       // Local messages
       case StartAllReceivers(receivers) =>
+        //根据流数据接收器分发策略，匹配流数据接收器Receiver和executor
         val scheduledLocations = schedulingPolicy.scheduleReceivers(receivers, getExecutors)
         for (receiver <- receivers) {
           val executors = scheduledLocations(receiver.streamId)
           updateReceiverScheduledExecutors(receiver.streamId, executors)
+          // 在hashmap中保存流数据接收器receiver的首选位置
           receiverPreferredLocations(receiver.streamId) = receiver.preferredLocation
+          // 在指定的executor中启动流数据接收器receiver
           startReceiver(receiver, executors)
         }
       case RestartReceiver(receiver) =>
-        // Old scheduled executors minus the ones that are not active any more
+        // Old scheduled executors minus the ones that are not active any more  旧的计划执行器减去那些不再活动的执行器
         val oldScheduledExecutors = getStoredScheduledExecutors(receiver.streamId)
         val scheduledLocations = if (oldScheduledExecutors.nonEmpty) {
             // Try global scheduling again
             oldScheduledExecutors
           } else {
             val oldReceiverInfo = receiverTrackingInfos(receiver.streamId)
-            // Clear "scheduledLocations" to indicate we are going to do local scheduling
+            // Clear "scheduledLocations" to indicate we are going to do local scheduling  清除“scheduledLocations”以表明我们将进行本地调度
             val newReceiverInfo = oldReceiverInfo.copy(
               state = ReceiverState.INACTIVE, scheduledLocations = None)
             receiverTrackingInfos(receiver.streamId) = newReceiverInfo
@@ -502,7 +525,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
               getExecutors)
           }
         // Assume there is one receiver restarting at one time, so we don't need to update
-        // receiverTrackingInfos
+        // receiverTrackingInfos  假设有一个接收者在同一时间重新启动，因此我们不需要更新receiverTrackingInfos
         startReceiver(receiver, scheduledLocations)
       case c: CleanupOldBlocks =>
         receiverTrackingInfos.values.flatMap(_.endpoint).foreach(_.send(c))
@@ -510,7 +533,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
         for (info <- receiverTrackingInfos.get(streamUID); eP <- info.endpoint) {
           eP.send(UpdateRateLimit(newRate))
         }
-      // Remote messages
+      // Remote messages  远程消息
       case ReportError(streamId, message, error) =>
         reportError(streamId, message, error)
     }
@@ -551,7 +574,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     }
 
     /**
-     * Return the stored scheduled executors that are still alive.
+     * Return the stored scheduled executors that are still alive.  返回仍然存在的已存储的计划执行程序。
      */
     private def getStoredScheduledExecutors(receiverId: Int): Seq[TaskLocation] = {
       if (receiverTrackingInfos.contains(receiverId)) {
@@ -572,13 +595,13 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     }
 
     /**
-     * Start a receiver along with its scheduled executors
+     * Start a receiver along with its scheduled executors  启动接收器及其计划的执行器
      */
     private def startReceiver(
         receiver: Receiver[_],
         scheduledLocations: Seq[TaskLocation]): Unit = {
       def shouldStartReceiver: Boolean = {
-        // It's okay to start when trackerState is Initialized or Started
+        // It's okay to start when trackerState is Initialized or Started  trackerState初始化或启动时可以启动
         !(isTrackerStopping || isTrackerStopped)
       }
 
@@ -592,7 +615,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
       val serializableHadoopConf =
         new SerializableConfiguration(ssc.sparkContext.hadoopConfiguration)
 
-      // Function to start the receiver on the worker node
+      // Function to start the receiver on the worker node 函数启动工作节点上的接收器
       val startReceiverFunc: Iterator[Receiver[_]] => Unit =
         (iterator: Iterator[Receiver[_]]) => {
           if (!iterator.hasNext) {
@@ -608,10 +631,12 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
             supervisor.awaitTermination()
           } else {
             // It's restarted by TaskScheduler, but we want to reschedule it again. So exit it.
+            // 它由TaskScheduler重新启动，但我们希望重新调度它。所以退出。
           }
         }
 
       // Create the RDD using the scheduledLocations to run the receiver in a Spark job
+      // 使用scheduledLocations创建RDD，以在Spark作业中运行接收器
       val receiverRDD: RDD[Receiver[_]] =
         if (scheduledLocations.isEmpty) {
           ssc.sc.makeRDD(Seq(receiver), 1)
@@ -626,6 +651,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
       val future = ssc.sparkContext.submitJob[Receiver[_], Unit, Unit](
         receiverRDD, startReceiverFunc, Seq(0), (_, _) => Unit, ())
       // We will keep restarting the receiver job until ReceiverTracker is stopped
+      // 我们将继续重新启动接收方作业，直到ReceiverTracker停止
       future.onComplete {
         case Success(_) =>
           if (!shouldStartReceiver) {
@@ -653,6 +679,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
 
     /**
      * Call when a receiver is terminated. It means we won't restart its Spark job.
+      * 接收方终止时调用。这意味着我们不会重启它的Spark任务
      */
     private def onReceiverJobFinish(receiverId: Int): Unit = {
       receiverJobExitLatch.countDown()
@@ -663,7 +690,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
       }
     }
 
-    /** Send stop signal to the receivers. */
+    /** Send stop signal to the receivers.  向接收端发送停止信号。*/
     private def stopReceivers() {
       receiverTrackingInfos.values.flatMap(_.endpoint).foreach { _.send(StopReceiver) }
       logInfo("Sent stop signal to all " + receiverTrackingInfos.size + " receivers")
