@@ -16,11 +16,11 @@
  */
 
 package org.apache.spark.streaming
-
+// 时间间隔
 private[streaming]
 class Interval(val beginTime: Time, val endTime: Time) {
   def this(beginMs: Long, endMs: Long) = this(new Time(beginMs), new Time(endMs))
-
+  // 持续时间
   def duration(): Duration = endTime - beginTime
 
   def + (time: Duration): Interval = {

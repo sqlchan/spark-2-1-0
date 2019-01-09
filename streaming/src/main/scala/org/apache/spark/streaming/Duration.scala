@@ -18,7 +18,7 @@
 package org.apache.spark.streaming
 
 import org.apache.spark.util.Utils
-
+  // 持续时间
 case class Duration (private val millis: Long) {
 
   def < (that: Duration): Boolean = (this.millis < that.millis)
@@ -77,6 +77,7 @@ case class Duration (private val millis: Long) {
 /**
  * Helper object that creates instance of [[org.apache.spark.streaming.Duration]] representing
  * a given number of milliseconds.
+  * 创建[org.apache.spark.streaming.]实例的Helper对象。表示给定的毫秒数。
  */
 object Milliseconds {
   def apply(milliseconds: Long): Duration = new Duration(milliseconds)

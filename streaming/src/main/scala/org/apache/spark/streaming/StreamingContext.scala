@@ -302,8 +302,9 @@ class StreamingContext private[streaming] (
 
   /**
    * Create an input stream with any arbitrary user implemented receiver.
+    * 使用任意用户实现的接收器创建输入流。
    * Find more details at http://spark.apache.org/docs/latest/streaming-custom-receivers.html
-   * @param receiver Custom implementation of Receiver
+   * @param receiver Custom implementation of Receiver 接收机自定义实现
    */
   def receiverStream[T: ClassTag](receiver: Receiver[T]): ReceiverInputDStream[T] = {
     withNamedScope("receiver stream") {
@@ -315,9 +316,10 @@ class StreamingContext private[streaming] (
    * Creates an input stream from TCP source hostname:port. Data is received using
    * a TCP socket and the receive bytes is interpreted as UTF8 encoded `\n` delimited
    * lines.
-   * @param hostname      Hostname to connect to for receiving data
+    * 从TCP源主机名:port创建输入流。使用TCP套接字接收数据，接收字节被解释为UTF8编码的“\n”分隔行。
+   * @param hostname      Hostname to connect to for receiving data  接收数据时要连接的主机名
    * @param port          Port to connect to for receiving data
-   * @param storageLevel  Storage level to use for storing the received objects
+   * @param storageLevel  Storage level to use for storing the received objects  用于存储接收对象的存储级别
    *                      (default: StorageLevel.MEMORY_AND_DISK_SER_2)
    * @see [[socketStream]]
    */
@@ -334,10 +336,11 @@ class StreamingContext private[streaming] (
    * a TCP socket and the receive bytes it interpreted as object using the given
    * converter.
    * @param hostname      Hostname to connect to for receiving data
-   * @param port          Port to connect to for receiving data
+   * @param port          Port to connect to for receiving data  函数的作用是:将字节流转换为对象
    * @param converter     Function to convert the byte stream to objects
    * @param storageLevel  Storage level to use for storing the received objects
    * @tparam T            Type of the objects received (after converting bytes to objects)
+    *                      接收对象的类型(将字节转换为对象之后)
    */
   def socketStream[T: ClassTag](
       hostname: String,
@@ -353,6 +356,9 @@ class StreamingContext private[streaming] (
    * as serialized blocks (serialized using the Spark's serializer) that can be directly
    * pushed into the block manager without deserializing them. This is the most efficient
    * way to receive data.
+    * 从网络源主机名:port创建输入流，其中数据作为序列化块接收(使用Spark的序列化器进行序列化)，
+    * 可以直接将其推入块管理器，而无需对其进行反序列化。
+    * 这是接收数据最有效的方法。
    * @param hostname      Hostname to connect to for receiving data
    * @param port          Port to connect to for receiving data
    * @param storageLevel  Storage level to use for storing the received objects
@@ -372,10 +378,13 @@ class StreamingContext private[streaming] (
    * for new files and reads them using the given key-value types and input format.
    * Files must be written to the monitored directory by "moving" them from another
    * location within the same file system. File names starting with . are ignored.
-   * @param directory HDFS directory to monitor for new file
-   * @tparam K Key type for reading HDFS file
+   * 创建一个输入流，用于监视hadoop兼容的文件系统中的新文件，并使用给定的键值类型和输入格式读取它们。
+   * 必须将文件从同一文件系统中的另一个位置“移动”到监视目录中。
+   * 文件名以。将被忽略。
+   * @param directory HDFS directory to monitor for new file  要监视新文件的HDFS目录
+   * @tparam K Key type for reading HDFS file  读取HDFS文件的键类型
    * @tparam V Value type for reading HDFS file
-   * @tparam F Input format for reading HDFS file
+   * @tparam F Input format for reading HDFS file  读取HDFS文件的输入格式
    */
   def fileStream[
     K: ClassTag,
@@ -391,8 +400,9 @@ class StreamingContext private[streaming] (
    * Files must be written to the monitored directory by "moving" them from another
    * location within the same file system.
    * @param directory HDFS directory to monitor for new file
-   * @param filter Function to filter paths to process
+   * @param filter Function to filter paths to process  函数筛选要处理的路径
    * @param newFilesOnly Should process only new files and ignore existing files in the directory
+    *                     应该只处理新文件而忽略目录中的现有文件吗
    * @tparam K Key type for reading HDFS file
    * @tparam V Value type for reading HDFS file
    * @tparam F Input format for reading HDFS file
@@ -413,7 +423,7 @@ class StreamingContext private[streaming] (
    * @param directory HDFS directory to monitor for new file
    * @param filter Function to filter paths to process
    * @param newFilesOnly Should process only new files and ignore existing files in the directory
-   * @param conf Hadoop configuration
+   * @param conf Hadoop configuration   Hadoop的配置
    * @tparam K Key type for reading HDFS file
    * @tparam V Value type for reading HDFS file
    * @tparam F Input format for reading HDFS file
@@ -435,6 +445,9 @@ class StreamingContext private[streaming] (
    * as Text and input format as TextInputFormat). Files must be written to the
    * monitored directory by "moving" them from another location within the same
    * file system. File names starting with . are ignored.
+    * 创建一个输入流，用于监视hadoop兼容的文件系统中的新文件，
+    * 并将它们读取为文本文件(使用key作为LongWritable, value作为text,
+    * input format作为TextInputFormat)。
    * @param directory HDFS directory to monitor for new file
    */
   def textFileStream(directory: String): DStream[String] = withNamedScope("text file stream") {
@@ -447,6 +460,8 @@ class StreamingContext private[streaming] (
    * generating one byte array per record. Files must be written to the monitored directory
    * by "moving" them from another location within the same file system. File names
    * starting with . are ignored.
+    * 创建一个输入流，用于监视hadoop兼容的文件系统中的新文件，并将它们作为平面二进制文件读取，
+    * 假设每个记录的长度是固定的，每个记录生成一个字节数组。
    *
    * @param directory HDFS directory to monitor for new file
    * @param recordLength length of each record in bytes
@@ -473,13 +488,17 @@ class StreamingContext private[streaming] (
   /**
    * Create an input stream from a queue of RDDs. In each batch,
    * it will process either one or all of the RDDs returned by the queue.
+    * 从RDDs队列中创建输入流。在每个批处理中，它将处理队列返回的一个或所有RDDs。
    *
    * @param queue      Queue of RDDs. Modifications to this data structure must be synchronized.
+    *                   抽样的队列。对该数据结构的修改必须同步
    * @param oneAtATime Whether only one RDD should be consumed from the queue in every interval
+    *                   是否每隔一段时间从队列中只使用一个RDD
    * @tparam T         Type of objects in the RDD
    *
    * @note Arbitrary RDDs can be added to `queueStream`, there is no way to recover data of
    * those RDDs, so `queueStream` doesn't support checkpointing.
+    * 可以将任意的rdd添加到queueStream中，没有办法恢复这些rdd的数据，所以queueStream不支持检查点。
    */
   def queueStream[T: ClassTag](
       queue: Queue[RDD[T]],
@@ -495,7 +514,8 @@ class StreamingContext private[streaming] (
    * @param queue      Queue of RDDs. Modifications to this data structure must be synchronized.
    * @param oneAtATime Whether only one RDD should be consumed from the queue in every interval
    * @param defaultRDD Default RDD is returned by the DStream when the queue is empty.
-   *                   Set as null if no RDD should be returned when empty
+    *                   当队列为空时，DStream返回默认的RDD。
+   *                   Set as null if no RDD should be returned when empty  如果在为空时不返回RDD，则设置为null
    * @tparam T         Type of objects in the RDD
    *
    * @note Arbitrary RDDs can be added to `queueStream`, there is no way to recover data of
@@ -511,6 +531,7 @@ class StreamingContext private[streaming] (
 
   /**
    * Create a unified DStream from multiple DStreams of the same type and same slide duration.
+    * 从相同类型和相同幻灯片持续时间的多个DStreams创建统一的DStream。
    */
   def union[T: ClassTag](streams: Seq[DStream[T]]): DStream[T] = withScope {
     new UnionDStream[T](streams.toArray)
@@ -519,6 +540,7 @@ class StreamingContext private[streaming] (
   /**
    * Create a new DStream in which each RDD is generated by applying a function on RDDs of
    * the DStreams.
+    * 创建一个新的DStream，其中每个RDD都是通过在DStreams的RDDs上应用一个函数生成的。
    */
   def transform[T: ClassTag](
       dstreams: Seq[DStream[_]],
@@ -530,6 +552,7 @@ class StreamingContext private[streaming] (
   /**
    * Add a [[org.apache.spark.streaming.scheduler.StreamingListener]] object for
    * receiving system events related to streaming.
+    * 添加一个[[org.apache.spark.streaming.scheduler。对象，用于接收与流相关的系统事件。
    */
   def addStreamingListener(streamingListener: StreamingListener) {
     scheduler.listenerBus.addListener(streamingListener)
@@ -539,13 +562,14 @@ class StreamingContext private[streaming] (
     assert(graph != null, "Graph is null")
     graph.validate()
 
+    // 检查点目录已设置，但图形检查点间隔尚未设置。请使用StreamingContext.checkpoint()设置该间隔
     require(
       !isCheckpointingEnabled || checkpointDuration != null,
       "Checkpoint directory has been set, but the graph checkpointing interval has " +
         "not been set. Please use StreamingContext.checkpoint() to set the interval."
     )
 
-    // Verify whether the DStream checkpoint is serializable
+    // Verify whether the DStream checkpoint is serializable  验证DStream检查点是否可序列化
     if (isCheckpointingEnabled) {
       val checkpoint = new Checkpoint(this, Time(0))
       try {
@@ -560,6 +584,10 @@ class StreamingContext private[streaming] (
       }
     }
 
+    /**
+      * 此应用程序启用了动态分配。如果未为Flume等不可重放源启用写前日志，
+      * 那么为Spark流应用程序启用动态分配可能会导致数据丢失。有关如何启用写前日志的详细信息，请参阅编程指南
+      */
     if (Utils.isDynamicAllocationEnabled(sc.conf) ||
         ExecutorAllocationManager.isDynamicAllocationEnabled(conf)) {
       logWarning("Dynamic Allocation is enabled for this application. " +
@@ -573,12 +601,15 @@ class StreamingContext private[streaming] (
    * :: DeveloperApi ::
    *
    * Return the current state of the context. The context can be in three possible states -
-   *
+   *返回上下文的当前状态。上下文可以处于三种可能的状态
    *  - StreamingContextState.INITIALIZED - The context has been created, but not started yet.
    *    Input DStreams, transformations and output operations can be created on the context.
+    *    StreamingContextState。已创建上下文，但尚未启动。可以在上下文中创建输入DStreams、转换和输出操作。
    *  - StreamingContextState.ACTIVE - The context has been started, and not stopped.
    *    Input DStreams, transformations and output operations cannot be created on the context.
+    *    ACTIVE——上下文已经启动，而不是停止。不能在上下文中创建输入DStreams、转换和输出操作。
    *  - StreamingContextState.STOPPED - The context has been stopped and cannot be used any more.
+    *  已停止——上下文已停止，不能再使用。
    */
   @DeveloperApi
   def getState(): StreamingContextState = synchronized {
@@ -586,7 +617,7 @@ class StreamingContext private[streaming] (
   }
 
   /**
-   * Start the execution of the streams.
+   * Start the execution of the streams. 启动流的执行。
    *
    * @throws IllegalStateException if the StreamingContext is already stopped.
    */
@@ -602,6 +633,7 @@ class StreamingContext private[streaming] (
             // Start the streaming scheduler in a new thread, so that thread local properties
             // like call sites and job groups can be reset without affecting those of the
             // current thread.
+            // 在一个新线程中启动流调度器，以便在不影响当前线程的情况下重置线程本地属性(如调用站点和作业组)。
             ThreadUtils.runInNewThread("streaming-start") {
               sparkContext.setCallSite(startSite.get)
               sparkContext.clearJobGroup()
@@ -623,6 +655,7 @@ class StreamingContext private[streaming] (
         shutdownHookRef = ShutdownHookManager.addShutdownHook(
           StreamingContext.SHUTDOWN_HOOK_PRIORITY)(stopOnShutdown)
         // Registering Streaming Metrics at the start of the StreamingContext
+        // 在StreamingContext的开头注册流度量
         assert(env.metricsSystem != null)
         env.metricsSystem.registerSource(streamingSource)
         uiTab.foreach(_.attach())
@@ -638,6 +671,7 @@ class StreamingContext private[streaming] (
   /**
    * Wait for the execution to stop. Any exceptions that occurs during the execution
    * will be thrown in this thread.
+    * 等待执行停止。执行过程中发生的任何异常都将被抛出到这个线程中。
    */
   def awaitTermination() {
     waiter.waitForStopOrError()
@@ -660,10 +694,14 @@ class StreamingContext private[streaming] (
    * to be processed). By default, if `stopSparkContext` is not specified, the underlying
    * SparkContext will also be stopped. This implicit behavior can be configured using the
    * SparkConf configuration spark.streaming.stopSparkContextByDefault.
+    * 立即停止流的执行(不等待所有接收到的数据都被处理)。
+    * 默认情况下，如果没有指定“stopSparkContext”，底层的SparkContext也将停止。
+    * 默认情况下，可以使用SparkConf配置spark.stream . stopsparkcontextbydefault配置此隐式行为。
    *
    * @param stopSparkContext If true, stops the associated SparkContext. The underlying SparkContext
    *                         will be stopped regardless of whether this StreamingContext has been
    *                         started.
+    *                         如果为真，则停止关联的SparkContext。不管这个StreamingContext是否已经启动，底层的SparkContext都将停止
    */
   def stop(
       stopSparkContext: Boolean = conf.getBoolean("spark.streaming.stopSparkContextByDefault", true)
@@ -674,12 +712,14 @@ class StreamingContext private[streaming] (
   /**
    * Stop the execution of the streams, with option of ensuring all received data
    * has been processed.
+    * 停止流的执行，并选择确保所有接收到的数据都已被处理
    *
    * @param stopSparkContext if true, stops the associated SparkContext. The underlying SparkContext
    *                         will be stopped regardless of whether this StreamingContext has been
    *                         started.
    * @param stopGracefully if true, stops gracefully by waiting for the processing of all
    *                       received data to be completed
+    *                       如果为真，则通过等待处理所有接收到的数据来优雅地停止
    */
   def stop(stopSparkContext: Boolean, stopGracefully: Boolean): Unit = {
     var shutdownHookRefToRemove: AnyRef = null
@@ -689,6 +729,7 @@ class StreamingContext private[streaming] (
     }
     synchronized {
       // The state should always be Stopped after calling `stop()`, even if we haven't started yet
+      // 在调用' stop() '之后，应该始终停止状态，即使我们还没有开始
       state match {
         case INITIALIZED =>
           logWarning("StreamingContext has not been started yet")
@@ -706,7 +747,7 @@ class StreamingContext private[streaming] (
           Utils.tryLogNonFatalError {
             scheduler.stop(stopGracefully)
           }
-          // Removing the streamingSource to de-register the metrics on stop()
+          // Removing the streamingSource to de-register the metrics on stop()删除streamingSource以注销stop()上的指标
           Utils.tryLogNonFatalError {
             env.metricsSystem.removeSource(streamingSource)
           }
@@ -730,6 +771,7 @@ class StreamingContext private[streaming] (
     }
     // Even if we have already stopped, we still need to attempt to stop the SparkContext because
     // a user might stop(stopSparkContext = false) and then call stop(stopSparkContext = true).
+    // 即使我们已经停止，我们仍然需要尝试停止SparkContext，因为用户可能会停止(stopSparkContext = false)，然后调用stop(stopSparkContext = true)。
     if (stopSparkContext) sc.stop()
   }
 
@@ -737,6 +779,7 @@ class StreamingContext private[streaming] (
     val stopGracefully = conf.getBoolean("spark.streaming.stopGracefullyOnShutdown", false)
     logInfo(s"Invoking stop(stopGracefully=$stopGracefully) from shutdown hook")
     // Do not stop SparkContext, let its own shutdown hook stop it
+    // 不停止SparkContext，让自己的关机钩子停止它
     stop(stopSparkContext = false, stopGracefully = stopGracefully)
   }
 }
@@ -744,6 +787,7 @@ class StreamingContext private[streaming] (
 /**
  * StreamingContext object contains a number of utility functions related to the
  * StreamingContext class.
+  * StreamingContext对象包含许多与StreamingContext类相关的实用程序函数。
  */
 
 object StreamingContext extends Logging {
@@ -751,6 +795,7 @@ object StreamingContext extends Logging {
   /**
    * Lock that guards activation of a StreamingContext as well as access to the singleton active
    * StreamingContext in getActiveOrCreate().
+    * Lock用于保护StreamingContext的激活以及getActiveOrCreate()中对单例活动StreamingContext的访问。
    */
   private val ACTIVATION_LOCK = new Object()
 
@@ -758,6 +803,7 @@ object StreamingContext extends Logging {
 
   private val activeContext = new AtomicReference[StreamingContext](null)
 
+  // 在这个JVM中只能启动一个StreamingContext。当前正在运行的StreamingContext是从
   private def assertNoOtherContextIsActive(): Unit = {
     ACTIVATION_LOCK.synchronized {
       if (activeContext.get() != null) {
@@ -777,7 +823,7 @@ object StreamingContext extends Logging {
 
   /**
    * :: Experimental ::
-   *
+   *获取当前活动上下文(如果有的话)。活动的意思是启动而不是停止。
    * Get the currently active context, if there is one. Active means started but not stopped.
    */
   @Experimental
@@ -792,7 +838,7 @@ object StreamingContext extends Logging {
    *
    * Either return the "active" StreamingContext (that is, started but not stopped), or create a
    * new StreamingContext that is
-   * @param creatingFunc   Function to create a new StreamingContext
+   * @param creatingFunc   Function to create a new StreamingContext  函数创建新的StreamingContext
    */
   @Experimental
   def getActiveOrCreate(creatingFunc: () => StreamingContext): StreamingContext = {
@@ -808,8 +854,11 @@ object StreamingContext extends Logging {
    * OR recreate a StreamingContext from checkpoint data in the given path. If checkpoint data
    * does not exist in the provided, then create a new StreamingContext by calling the provided
    * `creatingFunc`.
-   *
-   * @param checkpointPath Checkpoint directory used in an earlier StreamingContext program
+   * 或者获取当前活动的StreamingContext(即启动但未停止)，
+    * 或者从给定路径中的检查点数据重新创建StreamingContext。如果提供的内容中不存在检查点数据，
+    * 那么通过调用提供的' creatingFunc '来创建一个新的StreamingContext。
+    *
+    * @param checkpointPath Checkpoint directory used in an earlier StreamingContext program
    * @param creatingFunc   Function to create a new StreamingContext
    * @param hadoopConf     Optional Hadoop configuration if necessary for reading from the
    *                       file system
@@ -857,6 +906,7 @@ object StreamingContext extends Logging {
   /**
    * Find the JAR from which a given class was loaded, to make it easy for users to pass
    * their JARs to StreamingContext.
+    * 查找加载给定类的JAR，以便用户能够轻松地将JAR传递到StreamingContext。
    */
   def jarOfClass(cls: Class[_]): Option[String] = SparkContext.jarOfClass(cls)
 

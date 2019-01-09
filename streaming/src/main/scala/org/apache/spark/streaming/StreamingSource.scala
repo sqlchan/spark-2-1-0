@@ -23,7 +23,7 @@ import org.apache.spark.metrics.source.Source
 import org.apache.spark.streaming.ui.StreamingJobProgressListener
 
 private[streaming] class StreamingSource(ssc: StreamingContext) extends Source {
-  override val metricRegistry = new MetricRegistry
+  override val metricRegistry = new MetricRegistry   //度量注册表
   override val sourceName = "%s.StreamingMetrics".format(ssc.sparkContext.appName)
 
   private val streamingListener = ssc.progressListener
@@ -43,10 +43,10 @@ private[streaming] class StreamingSource(ssc: StreamingContext) extends Source {
     })
   }
 
-  // Gauge for number of network receivers
+  // Gauge for number of network receivers   测量网络接收器的数量
   registerGauge("receivers", _.numReceivers, 0)
 
-  // Gauge for number of total completed batches
+  // Gauge for number of total completed batches   总完成的批次
   registerGauge("totalCompletedBatches", _.numTotalCompletedBatches, 0L)
 
   // Gauge for number of total received records
@@ -69,6 +69,7 @@ private[streaming] class StreamingSource(ssc: StreamingContext) extends Source {
 
   // Gauge for last completed batch, useful for monitoring the streaming job's running status,
   // displayed data -1 for any abnormal condition.
+  // 用于监控流作业运行状态的最后一次完成批次的量规，显示任何异常情况下的数据-1。
   registerGaugeWithOption("lastCompletedBatch_submissionTime",
     _.lastCompletedBatch.map(_.submissionTime), -1L)
   registerGaugeWithOption("lastCompletedBatch_processingStartTime",
@@ -85,6 +86,7 @@ private[streaming] class StreamingSource(ssc: StreamingContext) extends Source {
     _.lastCompletedBatch.flatMap(_.totalDelay), -1L)
 
   // Gauge for last received batch, useful for monitoring the streaming job's running status,
+  // 用于监控流作业的运行状态的上一次接收批处理的量规，
   // displayed data -1 for any abnormal condition.
   registerGaugeWithOption("lastReceivedBatch_submissionTime",
     _.lastReceivedBatch.map(_.submissionTime), -1L)
@@ -93,6 +95,6 @@ private[streaming] class StreamingSource(ssc: StreamingContext) extends Source {
   registerGaugeWithOption("lastReceivedBatch_processingEndTime",
     _.lastReceivedBatch.flatMap(_.processingEndTime), -1L)
 
-  // Gauge for last received batch records.
+  // Gauge for last received batch records.  测量上次接收的批记录
   registerGauge("lastReceivedBatch_records", _.lastReceivedBatchRecords.values.sum, 0L)
 }

@@ -40,13 +40,14 @@ class Checkpoint(ssc: StreamingContext, val checkpointTime: Time)
   val graph = ssc.graph
   val checkpointDir = ssc.checkpointDir
   val checkpointDuration = ssc.checkpointDuration
-  val pendingTimes = ssc.scheduler.getPendingTimes().toArray
+  val pendingTimes = ssc.scheduler.getPendingTimes().toArray  // 等待时间
   val sparkConfPairs = ssc.conf.getAll
 
   def createSparkConf(): SparkConf = {
 
     // Reload properties for the checkpoint application since user wants to set a reload property
     // or spark had changed its value and user wants to set it back.
+    // 重新加载检查点应用程序的属性，因为用户想要设置重新加载属性或spark已更改其值并且用户想要将其设置回来。
     val propertiesToReload = List(
       "spark.yarn.app.id",
       "spark.yarn.app.attemptId",
@@ -68,6 +69,7 @@ class Checkpoint(ssc: StreamingContext, val checkpointTime: Time)
     }
 
     // Add Yarn proxy filter specific configurations to the recovered SparkConf
+    // 将Yarn代理筛选器特定配置添加到恢复的SparkConf
     val filter = "org.apache.hadoop.yarn.server.webproxy.amfilter.AmIpFilter"
     val filterPrefix = s"spark.$filter.param."
     newReloadConf.getAll.foreach { case (k, v) =>
@@ -104,8 +106,9 @@ object Checkpoint extends Logging {
   }
 
   /**
-   * @param checkpointDir checkpoint directory to read checkpoint files from
+   * @param checkpointDir checkpoint directory to read checkpoint files from 检查点目录从中读取检查点文件
    * @return checkpoint files from the `checkpointDir` checkpoint directory, ordered by oldest-first
+    *         来自`checkpointDir`检查点目录的检查点文件，按最早的顺序排序
    */
   def getCheckpointFiles(checkpointDir: String, fsOption: Option[FileSystem] = None): Seq[Path] = {
 
@@ -134,7 +137,7 @@ object Checkpoint extends Logging {
     }
   }
 
-  /** Serialize the checkpoint, or throw any exception that occurs */
+  /** Serialize the checkpoint, or throw any exception that occurs 序列化检查点，或抛出发生的任何异常*/
   def serialize(checkpoint: Checkpoint, conf: SparkConf): Array[Byte] = {
     val compressionCodec = CompressionCodec.createCodec(conf)
     val bos = new ByteArrayOutputStream()
@@ -176,6 +179,7 @@ object Checkpoint extends Logging {
 
 /**
  * Convenience class to handle the writing of graph checkpoint to file
+  * 方便类来处理图形检查点到文件的写入
  */
 private[streaming]
 class CheckpointWriter(
@@ -189,6 +193,10 @@ class CheckpointWriter(
   // Single-thread executor which rejects executions when a large amount have queued up.
   // This fails fast since this typically means the checkpoint store will never keep up, and
   // will otherwise lead to filling memory with waiting payloads of byte[] to write.
+  /**
+    * 单线程执行程序，当有大量的线程排队时，它拒绝执行。
+    * 这种方法失败得很快，因为这通常意味着检查点存储将永远跟不上，否则将导致用等待写入的byte[]有效负载填充内存。
+    */
   val executor = new ThreadPoolExecutor(
     1, 1,
     0L, TimeUnit.MILLISECONDS,
@@ -219,8 +227,14 @@ class CheckpointWriter(
       // also use the latest checkpoint time as the file name, so that we can recover from the
       // latest checkpoint file.
       //
+      /**
+        * 我们将在生成批处理和完成批处理时执行检查点。当批处理时间大于批处理间隔时，
+        * 可以在新批处理的检查点之后运行用于完成旧批处理的检查点。如果发生这种情况，
+        * 旧批处理的检查点实际上具有最新信息，因此我们希望从中恢复。
+        * 因此，我们还使用最新的检查点时间作为文件名，以便从最新的检查点文件中恢复。
+        */
       // Note: there is only one thread writing the checkpoint files, so we don't need to worry
-      // about thread-safety.
+      // about thread-safety. 只有一个线程在编写检查点文件，因此我们不需要担心线程安全性。
       val checkpointFile = Checkpoint.checkpointFile(checkpointDir, latestCheckpointTime)
       val backupFile = Checkpoint.checkpointBackupFile(checkpointDir, latestCheckpointTime)
 
@@ -230,7 +244,7 @@ class CheckpointWriter(
           logInfo(s"Saving checkpoint for time $checkpointTime to file '$checkpointFile'")
 
           // Write checkpoint to temp file
-          fs.delete(tempFile, true) // just in case it exists
+          fs.delete(tempFile, true) // just in case it exists  以防它存在
           val fos = fs.create(tempFile)
           Utils.tryWithSafeFinally {
             fos.write(bytes)
@@ -238,8 +252,8 @@ class CheckpointWriter(
             fos.close()
           }
 
-          // If the checkpoint file exists, back it up
-          // If the backup exists as well, just delete it, otherwise rename will fail
+          // If the checkpoint file exists, back it up 如果检查点文件存在，请备份它
+          // If the backup exists as well, just delete it, otherwise rename will fail 如果备份也存在，只需删除它，否则重命名将失败
           if (fs.exists(checkpointFile)) {
             fs.delete(backupFile, true) // just in case it exists
             if (!fs.rename(checkpointFile, backupFile)) {
@@ -247,12 +261,12 @@ class CheckpointWriter(
             }
           }
 
-          // Rename temp file to the final checkpoint file
+          // Rename temp file to the final checkpoint file 将临时文件重命名为最终检查点文件
           if (!fs.rename(tempFile, checkpointFile)) {
             logWarning(s"Could not rename $tempFile to $checkpointFile")
           }
 
-          // Delete old checkpoint files
+          // Delete old checkpoint files 删除旧检查点文件
           val allCheckpointFiles = Checkpoint.getCheckpointFiles(checkpointDir, Some(fs))
           if (allCheckpointFiles.size > 10) {
             allCheckpointFiles.take(allCheckpointFiles.size - 10).foreach { file =>
@@ -261,7 +275,7 @@ class CheckpointWriter(
             }
           }
 
-          // All done, print success
+          // All done, print success 全部完成，打印成功
           val finishTime = System.currentTimeMillis()
           logInfo(s"Checkpoint for time $checkpointTime saved to file '$checkpointFile'" +
             s", took ${bytes.length} bytes and ${finishTime - startTime} ms")
@@ -314,6 +328,8 @@ object CheckpointReader extends Logging {
    * Read checkpoint files present in the given checkpoint directory. If there are no checkpoint
    * files, then return None, else try to return the latest valid checkpoint object. If no
    * checkpoint files could be read correctly, then return None.
+    * 读取给定检查点目录中的检查点文件。如果没有检查点文件，则返回None，
+    * 否则尝试返回最新的有效检查点对象。如果无法正确读取检查点文件，则返回None。
    */
   def read(checkpointDir: String): Option[Checkpoint] = {
     read(checkpointDir, new SparkConf(), SparkHadoopUtil.get.conf, ignoreReadError = true)
