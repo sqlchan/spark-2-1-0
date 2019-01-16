@@ -34,7 +34,10 @@ import org.apache.spark.streaming.rdd.{MapWithStateRDD, MapWithStateRDDRecord}
  * Additionally, it also gives access to the stream of state snapshots, that is, the state data of
  * all keys after a batch has updated them.
  *
- * @tparam KeyType Class of the key
+  * DStream表示[[org.apache.spark. stream.dstream]上的“mapWithState”操作生成的数据流。PairDStreamFunctions DStream]]。
+  * 此外，它还提供了对状态快照流的访问，即批处理更新后所有键的状态数据。
+  *
+  * @tparam KeyType Class of the key
  * @tparam ValueType Class of the value
  * @tparam StateType Class of the state data
  * @tparam MappedType Class of the mapped data
@@ -43,11 +46,13 @@ import org.apache.spark.streaming.rdd.{MapWithStateRDD, MapWithStateRDDRecord}
 sealed abstract class MapWithStateDStream[KeyType, ValueType, StateType, MappedType: ClassTag](
     ssc: StreamingContext) extends DStream[MappedType](ssc) {
 
-  /** Return a pair DStream where each RDD is the snapshot of the state of all the keys. */
+  /** Return a pair DStream where each RDD is the snapshot of the state of all the keys.
+    * 返回一对DStream，其中每个RDD是所有键的状态快照 */
   def stateSnapshots(): DStream[(KeyType, StateType)]
 }
 
-/** Internal implementation of the [[MapWithStateDStream]] */
+/** Internal implementation of the [[MapWithStateDStream]]
+  * [[MapWithStateDStream]]的内部实现*/
 private[streaming] class MapWithStateDStreamImpl[
     KeyType: ClassTag, ValueType: ClassTag, StateType: ClassTag, MappedType: ClassTag](
     dataStream: DStream[(KeyType, ValueType)],
@@ -68,13 +73,15 @@ private[streaming] class MapWithStateDStreamImpl[
   /**
    * Forward the checkpoint interval to the internal DStream that computes the state maps. This
    * to make sure that this DStream does not get checkpointed, only the internal stream.
+    * 将检查点间隔转发到计算状态映射的内部DStream。这样可以确保这个DStream没有被选中，只有内部流被选中。
    */
   override def checkpoint(checkpointInterval: Duration): DStream[MappedType] = {
     internalStream.checkpoint(checkpointInterval)
     this
   }
 
-  /** Return a pair DStream where each RDD is the snapshot of the state of all the keys. */
+  /** Return a pair DStream where each RDD is the snapshot of the state of all the keys.
+    * 返回一对DStream，其中每个RDD是所有键的状态快照*/
   def stateSnapshots(): DStream[(KeyType, StateType)] = {
     internalStream.flatMap {
       _.stateMap.getAll().map { case (k, s, _) => (k, s) }.toTraversable }
@@ -93,6 +100,8 @@ private[streaming] class MapWithStateDStreamImpl[
  * A DStream that allows per-key state to be maintained, and arbitrary records to be generated
  * based on updates to the state. This is the main DStream that implements the `mapWithState`
  * operation on DStreams.
+  * 一种DStream，允许维护每个密钥的状态，并根据状态的更新生成任意记录。
+  * 这是在DStreams上实现“mapWithState”操作的主DStream。
  *
  * @param parent Parent (key, value) stream that is the source
  * @param spec Specifications of the mapWithState operation
@@ -130,13 +139,15 @@ class InternalMapWithStateDStream[K: ClassTag, V: ClassTag, S: ClassTag, E: Clas
 
   /** Method that generates an RDD for the given time */
   override def compute(validTime: Time): Option[RDD[MapWithStateRDDRecord[K, S, E]]] = {
-    // Get the previous state or create a new empty state RDD
+    // Get the previous state or create a new empty state RDD  获取以前的状态或创建一个新的空状态RDD
     val prevStateRDD = getOrCompute(validTime - slideDuration) match {
       case Some(rdd) =>
         if (rdd.partitioner != Some(partitioner)) {
           // If the RDD is not partitioned the right way, let us repartition it using the
           // partition index as the key. This is to ensure that state RDD is always partitioned
           // before creating another state RDD using it
+          // 如果RDD没有以正确的方式分区，那么让我们使用分区索引作为键对其重新分区。
+          // 这是为了确保在使用状态RDD创建另一个状态RDD之前，总是对状态RDD进行分区
           MapWithStateRDD.createFromRDD[K, V, S, E](
             rdd.flatMap { _.stateMap.getAll() }, partitioner, validTime)
         } else {

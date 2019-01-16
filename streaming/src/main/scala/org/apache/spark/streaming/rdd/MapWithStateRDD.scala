@@ -31,6 +31,7 @@ import org.apache.spark.util.Utils
 /**
  * Record storing the keyed-state [[MapWithStateRDD]]. Each record contains a [[StateMap]] and a
  * sequence of records returned by the mapping function of `mapWithState`.
+  * 记录存储键状态[[MapWithStateRDD]]。每个记录都包含一个[[StateMap]]和一个由mapWithState映射函数返回的记录序列。
  */
 private[streaming] case class MapWithStateRDDRecord[K, S, E](
     var stateMap: StateMap[K, S], var mappedData: Seq[E])
@@ -45,6 +46,7 @@ private[streaming] object MapWithStateRDDRecord {
     removeTimedoutData: Boolean
   ): MapWithStateRDDRecord[K, S, E] = {
     // Create a new state map by cloning the previous one (if it exists) or by creating an empty one
+    // 通过克隆前一个状态映射(如果存在的话)或创建一个空状态映射来创建一个新的状态映射
     val newStateMap = prevRecord.map { _.stateMap.copy() }. getOrElse { new EmptyStateMap[K, S]() }
 
     val mappedData = new ArrayBuffer[E]
@@ -52,6 +54,7 @@ private[streaming] object MapWithStateRDDRecord {
 
     // Call the mapping function on each record in the data iterator, and accordingly
     // update the states touched, and collect the data returned by the mapping function
+    // 在数据迭代器中的每条记录上调用映射函数，并相应地更新所接触的状态，并收集映射函数返回的数据
     dataIterator.foreach { case (key, value) =>
       wrappedState.wrap(newStateMap.get(key))
       val returned = mappingFunction(batchTime, key, Some(value), wrappedState)
@@ -66,6 +69,7 @@ private[streaming] object MapWithStateRDDRecord {
 
     // Get the timed out state records, call the mapping function on each and collect the
     // data returned
+    // 获取超时状态记录，调用每个记录上的映射函数并收集返回的数据
     if (removeTimedoutData && timeoutThresholdTime.isDefined) {
       newStateMap.getByTime(timeoutThresholdTime.get).foreach { case (key, state, _) =>
         wrappedState.wrapTimingOutState(state)
@@ -82,6 +86,7 @@ private[streaming] object MapWithStateRDDRecord {
 /**
  * Partition of the [[MapWithStateRDD]], which depends on corresponding partitions of prev state
  * RDD, and a partitioned keyed-data RDD
+  * [[MapWithStateRDD]]的分区，它依赖于prev状态RDD的相应分区和分区的键数据RDD
  */
 private[streaming] class MapWithStateRDDPartition(
     override val index: Int,
@@ -101,6 +106,7 @@ private[streaming] class MapWithStateRDDPartition(
   @throws(classOf[IOException])
   private def writeObject(oos: ObjectOutputStream): Unit = Utils.tryOrIOException {
     // Update the reference to parent split at the time of task serialization
+    // 在任务序列化时更新对父分割的引用
     previousSessionRDDPartition = prevStateRDD.partitions(index)
     partitionedDataRDDPartition = partitionedDataRDD.partitions(index)
     oos.defaultWriteObject()
@@ -113,11 +119,16 @@ private[streaming] class MapWithStateRDDPartition(
  * Each partition of this RDD has a single record of type [[MapWithStateRDDRecord]]. This contains a
  * [[StateMap]] (containing the keyed-states) and the sequence of records returned by the mapping
  * function of  `mapWithState`.
+  * RDD存储“mapWithState”操作的键控状态和相应的映射数据。这个RDD的每个分区都有一个类型为[[MapWithStateRDDRecord]]的记录。
+  * 它包含[[StateMap]](包含键状态)和映射函数mapWithState返回的记录序列。
  * @param prevStateRDD The previous MapWithStateRDD on whose StateMap data `this` RDD
   *                    will be created
+  *                    前面的MapWithStateRDD，它的StateMap数据“this”RDD将在其上创建
  * @param partitionedDataRDD The partitioned data RDD which is used update the previous StateMaps
  *                           in the `prevStateRDD` to create `this` RDD
+  *                          分区数据RDD用于更新“prevStateRDD”中的先前状态映射，以创建“这个”RDD
  * @param mappingFunction  The function that will be used to update state and return new data
+  *                         用于更新状态和返回新数据的函数
  * @param batchTime        The time of the batch to which this RDD belongs to. Use to update
  * @param timeoutThresholdTime The time to indicate which keys are timeout
  */

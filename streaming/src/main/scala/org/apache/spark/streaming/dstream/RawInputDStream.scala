@@ -35,6 +35,10 @@ import org.apache.spark.streaming.receiver.Receiver
  * The blocks will be inserted directly into the block store. This is the fastest way to get
  * data into Spark Streaming, though it requires the sender to batch data and serialize it
  * in the format that the system is configured with.
+  * 从给定网络地址读取序列化对象块的输入流。
+  *
+  * 这些块将直接插入块存储中。这是将数据导入Spark流的最快方式，
+  * 尽管它要求发送方以系统配置的格式对数据进行批处理和序列化。
  */
 private[streaming]
 class RawInputDStream[T: ClassTag](

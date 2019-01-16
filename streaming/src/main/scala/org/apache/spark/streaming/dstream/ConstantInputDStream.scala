@@ -24,6 +24,7 @@ import org.apache.spark.streaming.{StreamingContext, Time}
 
 /**
  * An input stream that always returns the same RDD on each time step. Useful for testing.
+  * 在每个时间步上总是返回相同RDD的输入流。用于测试。
  */
 class ConstantInputDStream[T: ClassTag](_ssc: StreamingContext, rdd: RDD[T])
   extends InputDStream[T](_ssc) {

@@ -34,13 +34,18 @@ import org.apache.spark.util.io.ChunkedByteBuffer
  * Partition class for [[org.apache.spark.streaming.rdd.WriteAheadLogBackedBlockRDD]].
  * It contains information about the id of the blocks having this partition's data and
  * the corresponding record handle in the write ahead log that backs the partition.
+  * [org.apache.spark.stream.rdd . writeaheadlogbackedblockrdd的分区类。
+  * 它包含关于具有该分区数据的块的id以及支持该分区的write ahead日志中相应的记录句柄的信息。
  *
- * @param index index of the partition
- * @param blockId id of the block having the partition data
- * @param isBlockIdValid Whether the block Ids are valid (i.e., the blocks are present in the Spark
- *                         executors). If not, then block lookups by the block ids will be skipped.
- *                         By default, this is an empty array signifying true for all the blocks.
+ * @param index           index of the partition
+ * @param blockId         id of the block having the partition data  具有分区数据的块的id
+ * @param isBlockIdValid  Whether the block Ids are valid (i.e., the blocks are present in the Spark
+ *                        executors). If not, then block lookups by the block ids will be skipped.
+ *                        By default, this is an empty array signifying true for all the blocks.
+  *                       块id是否有效(即，块存在于Spark执行器中)。如果不是，那么将跳过块id的块查找。
+  *                       默认情况下，这是一个空数组，表示所有块都为true。
  * @param walRecordHandle Handle of the record in a write ahead log having the partition data
+  *                        具有分区数据的写前日志中的记录句柄
  */
 private[streaming]
 class WriteAheadLogBackedBlockRDDPartition(
@@ -60,15 +65,21 @@ class WriteAheadLogBackedBlockRDDPartition(
  * element in isBlockIdValid to false. This is a performance optimization which does not affect
  * correctness, and it can be used in situations where it is known that the block
  * does not exist in the Spark executors (e.g. after a failed driver is restarted).
+  * 这个类表示块rdd的一种特殊情况，其中块管理器中的数据块也由写前日志中的数据支持。
+  * 为了读取数据，RDD首先在块管理器中根据块的id查找块。如果没有找到它们，则使用相应的记录句柄查找WAL。
+  * 通过将isBlockIdValid中的相应元素设置为false，可以跳过从块管理器中查找块。
+  * 这是一种不影响正确性的性能优化，可以用于已知Spark执行器中不存在块的情况下(例如，在重新启动失败的驱动程序之后)。
  *
  * @param sc SparkContext
- * @param _blockIds Ids of the blocks that contains this RDD's data
+ * @param _blockIds Ids of the blocks that contains this RDD's data 包含此RDD数据的块的id
  * @param walRecordHandles Record handles in write ahead logs that contain this RDD's data
+  *                         包含此RDD数据的写前日志中的记录句柄
  * @param isBlockIdValid Whether the block Ids are valid (i.e., the blocks are present in the Spark
  *                         executors). If not, then block lookups by the block ids will be skipped.
  *                         By default, this is an empty array signifying true for all the blocks.
  * @param storeInBlockManager Whether to store a block in the block manager
  *                            after reading it from the WAL
+  *                            在从WAL中读取块之后，是否将块存储在块管理器中
  * @param storageLevel storage level to store when storing in block manager
  *                     (applicable when storeInBlockManager = true)
  */
@@ -93,6 +104,7 @@ class WriteAheadLogBackedBlockRDD[T: ClassTag](
       s" same as number of block Ids (${_blockIds.length})")
 
   // Hadoop configuration is not serializable, so broadcast it as a serializable.
+  // Hadoop配置是不可序列化的，因此将其作为可序列化的进行广播
   @transient private val hadoopConfig = sc.hadoopConfiguration
   private val broadcastedHadoopConf = new SerializableConfiguration(hadoopConfig)
 
@@ -110,6 +122,8 @@ class WriteAheadLogBackedBlockRDD[T: ClassTag](
    * Gets the partition data by getting the corresponding block from the block manager.
    * If the block does not exist, then the data is read from the corresponding record
    * in write ahead log files.
+    * 通过从块管理器获取相应的块来获取分区数据。
+    * 如果块不存在，则从write ahead日志文件中的相应记录读取数据。
    */
   override def compute(split: Partition, context: TaskContext): Iterator[T] = {
     assertValid()
@@ -135,6 +149,13 @@ class WriteAheadLogBackedBlockRDD[T: ClassTag](
         // FileBasedWriteAheadLog will not create any file or directory at that path. Also,
         // this dummy directory should not already exist otherwise the WAL will try to recover
         // past events from the directory and throw errors.
+        /**
+          * WriteAheadLogUtils。方法需要一个目录来创建WriteAheadLog对象，因为默认的FileBasedWriteAheadLog需要一个目录来写入日志数据。
+          * 但是，如果需要读取数据，则不需要目录，因此提供了一个虚拟路径来满足方法参数要求。
+          * FileBasedWriteAheadLog不会在该路径中创建任何文件或目录。
+          * FileBasedWriteAheadLog不会在该路径中创建任何文件或目录。
+          * 另外，这个虚拟目录不应该已经存在，否则WAL将试图从该目录中恢复过去的事件并抛出错误。
+          */
         val nonExistentDirectory = new File(
           System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString).getAbsolutePath
         writeAheadLog = WriteAheadLogUtils.createLogForReceiver(
@@ -179,6 +200,8 @@ class WriteAheadLogBackedBlockRDD[T: ClassTag](
    * Get the preferred location of the partition. This returns the locations of the block
    * if it is present in the block manager, else if FileBasedWriteAheadLogSegment is used,
    * it returns the location of the corresponding file segment in HDFS .
+    * 获取分区的首选位置。如果块位于块管理器中，则返回该块的位置;
+    * 如果使用FileBasedWriteAheadLogSegment，则返回相应文件段在HDFS中的位置。
    */
   override def getPreferredLocations(split: Partition): Seq[String] = {
     val partition = split.asInstanceOf[WriteAheadLogBackedBlockRDDPartition]

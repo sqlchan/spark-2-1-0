@@ -66,7 +66,7 @@ class SocketReceiver[T: ClassTag](
     }
     logInfo(s"Connected to $host:$port")
 
-    // Start the thread that receives data over a connection
+    // Start the thread that receives data over a connection  启动通过连接接收数据的线程
     new Thread("Socket Receiver") {
       setDaemon(true)
       override def run() { receive() }
@@ -74,7 +74,7 @@ class SocketReceiver[T: ClassTag](
   }
 
   def onStop() {
-    // in case restart thread close it twice
+    // in case restart thread close it twice  如果重新启动线程，关闭它两次
     synchronized {
       if (socket != null) {
         socket.close()
@@ -84,7 +84,9 @@ class SocketReceiver[T: ClassTag](
     }
   }
 
-  /** Create a socket connection and receive data until receiver is stopped */
+  /** Create a socket connection and receive data until receiver is stopped
+    * 创建套接字连接并接收数据，直到接收器停止
+    * */
   def receive() {
     try {
       val iterator = bytesToObjects(socket.getInputStream())
@@ -112,6 +114,7 @@ object SocketReceiver  {
   /**
    * This methods translates the data from an inputstream (say, from a socket)
    * to '\n' delimited strings and returns an iterator to access the strings.
+    * 该方法将数据从inputstream(例如，从套接字)转换为“\n”分隔的字符串，并返回一个迭代器来访问字符串。
    */
   def bytesToLines(inputStream: InputStream): Iterator[String] = {
     val dataInputStream = new BufferedReader(

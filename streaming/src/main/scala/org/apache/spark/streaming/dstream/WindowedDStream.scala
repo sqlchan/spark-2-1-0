@@ -42,6 +42,7 @@ class WindowedDStream[T: ClassTag](
   }
 
   // Persist parent level by default, as those RDDs are going to be obviously reused.
+  // 在默认情况下，持久化父级，因为这些rdd显然会被重用。
   parent.persist(StorageLevel.MEMORY_ONLY_SER)
 
   def windowDuration: Duration = _windowDuration
@@ -56,6 +57,10 @@ class WindowedDStream[T: ClassTag](
     // Do not let this windowed DStream be persisted as windowed (union-ed) RDDs share underlying
     // RDDs and persisting the windowed RDDs would store numerous copies of the underlying data.
     // Instead control the persistence of the parent DStream.
+    /**
+      * 不要让这个窗口化的DStream被持久化为窗口化的(联合的)RDDs共享底层。
+      * RDDs和持久化窗口化的RDDs将存储底层数据的大量副本。而是控制父DStream的持久性。
+      */
     parent.persist(level)
     this
   }

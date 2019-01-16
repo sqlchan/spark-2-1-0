@@ -34,13 +34,17 @@ import org.apache.spark.util.{SerializableConfiguration, TimeStampedHashMap, Uti
 /**
  * This class represents an input stream that monitors a Hadoop-compatible filesystem for new
  * files and creates a stream out of them. The way it works as follows.
- *
+ *他的类表示一个输入流，用于监视hadoop兼容的文件系统中的新文件，并从中创建一个流。它的工作方式如下。
+  *
  * At each batch interval, the file system is queried for files in the given directory and
  * detected new files are selected for that batch. In this case "new" means files that
  * became visible to readers during that time period. Some extra care is needed to deal
  * with the fact that files may become visible after they are created. For this purpose, this
  * class remembers the information about the files selected in past batches for
  * a certain duration (say, "remember window") as shown in the figure below.
+  * 在每个批处理间隔，文件系统将查询给定目录中的文件，并为该批处理选择检测到的新文件。
+  * 在本例中，“新”指的是在此期间对读者可见的文件。需要特别注意的是，文件在创建之后可能变得可见。
+  * 为此，该类将在一定的时间内(例如“remember window”)记住在过去批处理中选择的文件的信息，如下图所示。
  *
  * {{{
  *                      |<----- remember window ----->|
@@ -59,17 +63,27 @@ import org.apache.spark.util.{SerializableConfiguration, TimeStampedHashMap, Uti
  * each batch - files whose mod times are greater than the ignore threshold and
  * have not been considered within the remember window. See the documentation on the method
  * `isNewFile` for more details.
+  * 窗口的尾部是“忽略阈值”，所有mod时间小于该阈值的文件都假定已经被选中，
+  * 因此将被忽略。mod时间在“记忆窗口”中的文件将与已经选择的文件进行对照检查。
+  * 在较高的级别上，这是在每个批处理中标识新文件的方式——批处理文件的mod时间大于忽略阈值，并且在remember窗口中未被考虑。
+  * 有关“isNewFile”方法的详细信息，请参阅该方法的文档。
  *
  * This makes some assumptions from the underlying file system that the system is monitoring.
+  * 这从系统正在监视的底层文件系统中做了一些假设。
  *
  *  - The clock of the file system is assumed to synchronized with the clock of the machine running
  *    the streaming app.
+  *    假定文件系统的时钟与运行流应用程序的机器的时钟同步。
  *  - If a file is to be visible in the directory listings, it must be visible within a certain
  *    duration of the mod time of the file. This duration is the "remember window", which is set to
  *    1 minute (see `FileInputDStream.minRememberDuration`). Otherwise, the file will never be
  *    selected as the mod time will be less than the ignore threshold when it becomes visible.
+  *    如果一个文件在目录列表中是可见的，那么它必须在该文件的mod时间的特定持续时间内是可见的。
+  *    此持续时间为“remember window”，设置为1分钟(参见“fileinputdstream . minremember berduration”)。
+  *    否则，该文件将永远不会被选择，因为mod时间将小于忽略阈值时，它变得可见。
  *  - Once a file is visible, the mod time cannot change. If it does due to appends, then the
  *    processing semantics are undefined.
+  *    一旦文件可见，mod时间就不能更改。如果是由于追加，则处理语义是未定义的。
  */
 private[streaming]
 class FileInputDStream[K, V, F <: NewInputFormat[K, V]](
@@ -85,6 +99,7 @@ class FileInputDStream[K, V, F <: NewInputFormat[K, V]](
 
   /**
    * Minimum duration of remembering the information of selected files. Defaults to 60 seconds.
+    * 记忆所选文件信息的最小持续时间。默认为60秒。
    *
    * Files with mod times older than this "window" of remembering will be ignored. So if new
    * files are visible within this window, then the file will get selected in the next batch.
@@ -94,20 +109,22 @@ class FileInputDStream[K, V, F <: NewInputFormat[K, V]](
       ssc.conf.get("spark.streaming.minRememberDuration", "60s")))
   }
 
-  // This is a def so that it works during checkpoint recovery:
+  // This is a def so that it works during checkpoint recovery: 这是一个def，所以它在检查点恢复期间工作:
   private def clock = ssc.scheduler.clock
 
-  // Data to be saved as part of the streaming checkpoints
+  // Data to be saved as part of the streaming checkpoints  作为流检查点的一部分保存的数据
   protected[streaming] override val checkpointData = new FileInputDStreamCheckpointData
 
   // Initial ignore threshold based on which old, existing files in the directory (at the time of
   // starting the streaming application) will be ignored or considered
+  // 初始忽略阈值，该阈值基于目录中(在启动流应用程序时)的旧文件将被忽略或考虑
   private val initialModTimeIgnoreThreshold = if (newFilesOnly) clock.getTimeMillis() else 0L
 
   /*
    * Make sure that the information of files selected in the last few batches are remembered.
-   * This would allow us to filter away not-too-old files which have already been recently
-   * selected and processed.
+   * 确保记住最后几批中选择的文件的信息。
+   * This would allow us to filter away not-too-old files which have already been recently selected and processed.
+   * 这将允许我们过滤掉不太旧的文件，这些文件最近已经被选择和处理。
    */
   private val numBatchesToRemember = FileInputDStream
     .calculateNumBatchesToRemember(slideDuration, minRememberDurationS)
@@ -143,6 +160,10 @@ class FileInputDStream[K, V, F <: NewInputFormat[K, V]](
    * granularity of seconds. And new files may have the same modification time as the
    * latest modification time in the previous call to this method yet was not reported in
    * the previous call.
+    * 查找自上次调用此方法以来修改的文件，并从中创建一个union RDD。
+    * 请注意，这将维护在上一个对该方法的调用的最新修改时间中处理的文件列表。
+    * 这是因为FileStatus API返回的修改时间似乎只返回秒粒度的时间。
+    * 而且新文件的修改时间可能与上一个方法调用中的最新修改时间相同，但在上一个调用中没有报告。
    */
   override def compute(validTime: Time): Option[RDD[(K, V)]] = {
     // Find new files
@@ -270,7 +291,7 @@ class FileInputDStream[K, V, F <: NewInputFormat[K, V]](
     return true
   }
 
-  /** Generate one RDD from an array of files */
+  /** Generate one RDD from an array of files  从文件数组中生成一个RDD*/
   private def filesToRDD(files: Seq[String]): RDD[(K, V)] = {
     val fileRDDs = files.map { file =>
       val rdd = serializableConfOpt.map(_.value) match {
@@ -323,7 +344,7 @@ class FileInputDStream[K, V, F <: NewInputFormat[K, V]](
 
   /**
    * A custom version of the DStreamCheckpointData that stores names of
-   * Hadoop files as checkpoint data.
+   * Hadoop files as checkpoint data. 一个定制版本的DStreamCheckpointData，它将Hadoop文件的名称存储为检查点数据。
    */
   private[streaming]
   class FileInputDStreamCheckpointData extends DStreamCheckpointData(this) {

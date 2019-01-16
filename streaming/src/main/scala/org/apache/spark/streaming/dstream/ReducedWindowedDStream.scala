@@ -48,9 +48,11 @@ class ReducedWindowedDStream[K: ClassTag, V: ClassTag](
 
   // Reduce each batch of data using reduceByKey which will be further reduced by window
   // by ReducedWindowedDStream
+  // 使用reduceByKey减少每批数据，它将被ReducedWindowedDStream窗口进一步减少
   private val reducedStream = parent.reduceByKey(reduceFunc, partitioner)
 
   // Persist RDDs to memory by default as these RDDs are going to be reused.
+  // 默认情况下，将rdd持久化到内存中，因为这些rdd将被重用。
   super.persist(StorageLevel.MEMORY_ONLY_SER)
   reducedStream.persist(StorageLevel.MEMORY_ONLY_SER)
 
@@ -102,24 +104,25 @@ class ReducedWindowedDStream[K: ClassTag, V: ClassTag](
     //       old RDDs                     new RDDs
     //
 
-    // Get the RDDs of the reduced values in "old time steps"
+    // Get the RDDs of the reduced values in "old time steps" 在“旧时间步骤”中获取经过简化的值的RDDs
     val oldRDDs =
       reducedStream.slice(previousWindow.beginTime, currentWindow.beginTime - parent.slideDuration)
     logDebug("# old RDDs = " + oldRDDs.size)
 
-    // Get the RDDs of the reduced values in "new time steps"
+    // Get the RDDs of the reduced values in "new time steps" 在“新时间步长”中获取经过简化的值的RDDs
     val newRDDs =
       reducedStream.slice(previousWindow.endTime + parent.slideDuration, currentWindow.endTime)
     logDebug("# new RDDs = " + newRDDs.size)
 
-    // Get the RDD of the reduced value of the previous window
+    // Get the RDD of the reduced value of the previous window 获取前一个窗口的缩减值的RDD
     val previousWindowRDD =
       getOrCompute(previousWindow.endTime).getOrElse(ssc.sc.makeRDD(Seq[(K, V)]()))
 
     // Make the list of RDDs that needs to cogrouped together for reducing their reduced values
+    // 列出需要组合在一起以减少其减少值的rdd的列表
     val allRDDs = new ArrayBuffer[RDD[(K, V)]]() += previousWindowRDD ++= oldRDDs ++= newRDDs
 
-    // Cogroup the reduced RDDs and merge the reduced values
+    // Cogroup the reduced RDDs and merge the reduced values  对缩减后的RDDs进行共组并合并缩减后的值
     val cogroupedRDD = new CoGroupedRDD[K](allRDDs.toSeq.asInstanceOf[Seq[RDD[(K, _)]]],
       partitioner)
     // val mergeValuesFunc = mergeValues(oldRDDs.size, newRDDs.size) _
@@ -132,6 +135,7 @@ class ReducedWindowedDStream[K: ClassTag, V: ClassTag](
         throw new Exception("Unexpected number of sequences of reduced values")
       }
       // Getting reduced values "old time steps" that will be removed from current window
+      // 获取将从当前窗口中删除的“旧时间步骤”的简化值
       val oldValues = (1 to numOldValues).map(i => arrayOfValues(i)).filter(!_.isEmpty).map(_.head)
       // Getting reduced values "new time steps"
       val newValues =

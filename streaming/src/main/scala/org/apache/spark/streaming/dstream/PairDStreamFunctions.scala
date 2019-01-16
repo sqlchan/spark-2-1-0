@@ -33,6 +33,7 @@ import org.apache.spark.util.{SerializableConfiguration, SerializableJobConf}
 
 /**
  * Extra functions available on DStream of (key, value) pairs through an implicit conversion.
+  * 通过隐式转换，DStream上的(键、值)对可以使用额外的函数
  */
 class PairDStreamFunctions[K, V](self: DStream[(K, V)])
     (implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K])
@@ -48,6 +49,7 @@ class PairDStreamFunctions[K, V](self: DStream[(K, V)])
   /**
    * Return a new DStream by applying `groupByKey` to each RDD. Hash partitioning is used to
    * generate the RDDs with Spark's default number of partitions.
+    * 通过对每个RDD应用“groupByKey”返回一个新的DStream。哈希分区用于生成具有Spark默认分区数的RDDs。
    */
   def groupByKey(): DStream[(K, Iterable[V])] = ssc.withScope {
     groupByKey(defaultPartitioner())
@@ -86,6 +88,8 @@ class PairDStreamFunctions[K, V](self: DStream[(K, V)])
    * Return a new DStream by applying `reduceByKey` to each RDD. The values for each key are
    * merged using the supplied reduce function. Hash partitioning is used to generate the RDDs
    * with `numPartitions` partitions.
+    * 通过对每个RDD应用' reduceByKey '返回一个新的DStream。
+    * 使用提供的reduce函数合并每个键的值。哈希分区用于生成带有“numPartitions”分区的RDDs。
    */
   def reduceByKey(
       reduceFunc: (V, V) => V,
@@ -108,6 +112,8 @@ class PairDStreamFunctions[K, V](self: DStream[(K, V)])
    * Combine elements of each key in DStream's RDDs using custom functions. This is similar to the
    * combineByKey for RDDs. Please refer to combineByKey in
    * org.apache.spark.rdd.PairRDDFunctions in the Spark core documentation for more information.
+    * 使用自定义函数组合DStream的RDDs中的每个键的元素。这类似于RDDs的combineByKey。
+    * 请参考org.apache.spark.rdd中的combineByKey。有关更多信息，请参见Spark核心文档中的PairRDDFunctions。
    */
   def combineByKey[C: ClassTag](
       createCombiner: V => C,
@@ -132,6 +138,8 @@ class PairDStreamFunctions[K, V](self: DStream[(K, V)])
    * `DStream.groupByKey()` but applies it over a sliding window. The new DStream generates RDDs
    * with the same interval as this DStream. Hash partitioning is used to generate the RDDs with
    * Spark's default number of partitions.
+    * 通过在滑动窗口上应用“groupByKey”返回一个新的DStream。这类似于“DStream.groupByKey()”，但应用于滑动窗口。
+    * 新的DStream生成与此DStream具有相同间隔的RDDs。哈希分区用于生成具有Spark默认分区数的RDDs。
    * @param windowDuration width of the window; must be a multiple of this DStream's
    *                       batching interval
    */
@@ -534,6 +542,7 @@ class PairDStreamFunctions[K, V](self: DStream[(K, V)])
   /**
    * Return a new DStream by applying a map function to the value of each key-value pairs in
    * 'this' DStream without changing the key.
+    * 通过将map函数应用到“this”DStream中的每个键-值对的值，而不更改键，返回一个新的DStream。
    */
   def mapValues[U: ClassTag](mapValuesFunc: V => U): DStream[(K, U)] = ssc.withScope {
     new MapValuedDStream[K, V, U](self, sparkContext.clean(mapValuesFunc))
@@ -551,8 +560,10 @@ class PairDStreamFunctions[K, V](self: DStream[(K, V)])
 
   /**
    * Return a new DStream by applying 'cogroup' between RDDs of `this` DStream and `other` DStream.
-   * Hash partitioning is used to generate the RDDs with Spark's default number
-   * of partitions.
+    * * Hash partitioning is used to generate the RDDs with Spark's default number
+    * * of partitions.
+    * 通过在“这个”DStream的RDDs和“其他”DStream的RDDs之间应用“cogroup”返回一个新的DStream
+    * 哈希分区用于生成具有Spark默认分区数的RDDs。
    */
   def cogroup[W: ClassTag](
       other: DStream[(K, W)]): DStream[(K, (Iterable[V], Iterable[W]))] = ssc.withScope {
