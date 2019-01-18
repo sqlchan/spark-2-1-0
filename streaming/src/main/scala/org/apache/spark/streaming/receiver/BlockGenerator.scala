@@ -27,7 +27,7 @@ import org.apache.spark.storage.StreamBlockId
 import org.apache.spark.streaming.util.RecurringTimer
 import org.apache.spark.util.{Clock, SystemClock}
 
-/** Listener object for BlockGenerator events */
+/** Listener object for BlockGenerator events  块生成器事件的侦听器对象*/
 private[streaming] trait BlockGeneratorListener {
   /**
    * Called after a data item is added into the BlockGenerator. The data addition and this
@@ -36,6 +36,9 @@ private[streaming] trait BlockGeneratorListener {
    * for updating metadata on successful buffering of a data item, specifically that metadata
    * that will be useful when a block is generated. Any long blocking operation in this callback
    * will hurt the throughput.
+    * 在数据项被添加到块生成器之后调用。数据添加和这个回调与块生成及其关联的回调同步，
+    * 因此块生成等待活动数据添加+回调完成。这对于在成功缓冲数据项时更新元数据非常有用，特别是在生成块时非常有用的元数据。
+    * 回调中的任何长时间阻塞操作都将损害吞吐量
    */
   def onAddData(data: Any, metadata: Any): Unit
 
@@ -46,6 +49,8 @@ private[streaming] trait BlockGeneratorListener {
    * for updating metadata when a block has been generated, specifically metadata that will
    * be useful when the block has been successfully stored. Any long blocking operation in this
    * callback will hurt the throughput.
+    * 当块生成器生成新的数据块时调用。块生成和这个回调与数据添加及其关联的回调同步，因此数据添加等待块生成+回调完成。
+    * 这对于在生成块时更新元数据非常有用，特别是在成功存储块时非常有用的元数据。回调中的任何长时间阻塞操作都将损害吞吐量
    */
   def onGenerateBlock(blockId: StreamBlockId): Unit
 
@@ -54,6 +59,8 @@ private[streaming] trait BlockGeneratorListener {
    * Spark in this method. Internally this is called from a single
    * thread, that is not synchronized with any other callbacks. Hence it is okay to do long
    * blocking operation in this callback.
+    * 在准备推送新块时调用。调用者应该在此方法中将块存储到Spark中。在内部，这是从单个线程调用的，
+    * 它不与任何其他回调同步。因此，在这个回调中执行长时间的阻塞操作是可以的。
    */
   def onPushBlock(blockId: StreamBlockId, arrayBuffer: ArrayBuffer[_]): Unit
 
@@ -70,9 +77,12 @@ private[streaming] trait BlockGeneratorListener {
  * named blocks at regular intervals. This class starts two threads,
  * one to periodically start a new batch and prepare the previous batch of as a block,
  * the other to push the blocks into the block manager.
+  * 生成由[org.apache.stream.receiver]接收的对象的批次。并定期将它们放入适当命名的块中。
+  * 这个类启动两个线程，一个线程周期性地启动新批处理，并将上一个批处理准备为块，另一个线程将块推入块管理器。
  *
  * Note: Do not create BlockGenerator instances directly inside receivers. Use
  * `ReceiverSupervisor.createBlockGenerator` to create a BlockGenerator and use it.
+  * 不要直接在接收器中创建块生成器实例。使用“ReceiverSupervisor。创建一个块生成器并使用它。
  */
 private[streaming] class BlockGenerator(
     listener: BlockGeneratorListener,
@@ -85,14 +95,19 @@ private[streaming] class BlockGenerator(
 
   /**
    * The BlockGenerator can be in 5 possible states, in the order as follows.
+    * 块发生器可以有5种可能的状态，顺序如下。
    *
-   *  - Initialized: Nothing has been started.
+   *  - Initialized: Nothing has been started. 初始化:没有启动任何东西
    *  - Active: start() has been called, and it is generating blocks on added data.
+    *  Active: start()已被调用，它正在对添加的数据生成块。
    *  - StoppedAddingData: stop() has been called, the adding of data has been stopped,
    *                       but blocks are still being generated and pushed.
+    *                       调用stop()，停止添加数据，但仍在生成和推送块。
    *  - StoppedGeneratingBlocks: Generating of blocks has been stopped, but
    *                             they are still being pushed.
+    *                             块的生成已经停止，但是它们仍然在被推送。
    *  - StoppedAll: Everything has been stopped, and the BlockGenerator object can be GCed.
+    *  一切都停止了，块生成器对象可以被GCed
    */
   private object GeneratorState extends Enumeration {
     type GeneratorState = Value
@@ -127,13 +142,14 @@ private[streaming] class BlockGenerator(
 
   /**
    * Stop everything in the right order such that all the data added is pushed out correctly.
+    * 按正确的顺序停止所有操作，以便正确地推出所有添加的数据。
    *
-   *  - First, stop adding data to the current buffer.
-   *  - Second, stop generating blocks.
-   *  - Finally, wait for queue of to-be-pushed blocks to be drained.
+   *  - First, stop adding data to the current buffer.首先，停止向当前缓冲区添加数据。
+   *  - Second, stop generating blocks. 第二，停止生成块。
+   *  - Finally, wait for queue of to-be-pushed blocks to be drained. 最后，等待要推的块队列被排干。
    */
   def stop(): Unit = {
-    // Set the state to stop adding data
+    // Set the state to stop adding data  设置状态以停止添加数据
     synchronized {
       if (state == Active) {
         state = StoppedAddingData
@@ -144,11 +160,12 @@ private[streaming] class BlockGenerator(
     }
 
     // Stop generating blocks and set the state for block pushing thread to start draining the queue
+    // 停止生成块并设置块推送线程的状态，以开始清空队列
     logInfo("Stopping BlockGenerator")
     blockIntervalTimer.stop(interruptTimer = false)
     synchronized { state = StoppedGeneratingBlocks }
 
-    // Wait for the queue to drain and mark state as StoppedAll
+    // Wait for the queue to drain and mark state as StoppedAll  等待队列耗尽并将状态标记为StoppedAll
     logInfo("Waiting for block pushing thread to terminate")
     blockPushingThread.join()
     synchronized { state = StoppedAll }
@@ -156,7 +173,7 @@ private[streaming] class BlockGenerator(
   }
 
   /**
-   * Push a single data item into the buffer.
+   * Push a single data item into the buffer. 将单个数据项推入缓冲区。
    */
   def addData(data: Any): Unit = {
     if (state == Active) {
@@ -201,10 +218,13 @@ private[streaming] class BlockGenerator(
    * Push multiple data items into the buffer. After buffering the data, the
    * `BlockGeneratorListener.onAddData` callback will be called. Note that all the data items
    * are atomically added to the buffer, and are hence guaranteed to be present in a single block.
+    * 将多个数据项推入缓冲区。在缓冲数据之后，“BlockGeneratorListener”。将调用onAddData '回调。
+    * 请注意，所有数据项都以原子方式添加到缓冲区中，因此保证出现在单个块中。
    */
   def addMultipleDataWithCallback(dataIterator: Iterator[Any], metadata: Any): Unit = {
     if (state == Active) {
       // Unroll iterator into a temp buffer, and wait for pushing in the process
+      // 将迭代器展开到临时缓冲区中，并等待进程中的push
       val tempBuffer = new ArrayBuffer[Any]
       dataIterator.foreach { data =>
         waitToPush()
@@ -229,7 +249,7 @@ private[streaming] class BlockGenerator(
 
   def isStopped(): Boolean = state == StoppedAll
 
-  /** Change the buffer to which single records are added to. */
+  /** Change the buffer to which single records are added to. 更改添加单个记录的缓冲区。*/
   private def updateCurrentBuffer(time: Long): Unit = {
     try {
       var newBlock: Block = null
@@ -244,7 +264,7 @@ private[streaming] class BlockGenerator(
       }
 
       if (newBlock != null) {
-        blocksForPushing.put(newBlock)  // put is blocking when queue is full
+        blocksForPushing.put(newBlock)  // put is blocking when queue is full    put在队列满时阻塞
       }
     } catch {
       case ie: InterruptedException =>
@@ -254,7 +274,7 @@ private[streaming] class BlockGenerator(
     }
   }
 
-  /** Keep pushing blocks to the BlockManager. */
+  /** Keep pushing blocks to the BlockManager.  继续向区块管理器推送区块。*/
   private def keepPushingBlocks() {
     logInfo("Started block pushing thread")
 
@@ -264,6 +284,7 @@ private[streaming] class BlockGenerator(
 
     try {
       // While blocks are being generated, keep polling for to-be-pushed blocks and push them.
+      // 在生成块时，对要推的块保持轮询并推它们。
       while (areBlocksBeingGenerated) {
         Option(blocksForPushing.poll(10, TimeUnit.MILLISECONDS)) match {
           case Some(block) => pushBlock(block)
@@ -272,6 +293,7 @@ private[streaming] class BlockGenerator(
       }
 
       // At this point, state is StoppedGeneratingBlock. So drain the queue of to-be-pushed blocks.
+      // 此时，state停止生成块。因此，清空待推块队列。
       logInfo("Pushing out the last " + blocksForPushing.size() + " blocks")
       while (!blocksForPushing.isEmpty) {
         val block = blocksForPushing.take()

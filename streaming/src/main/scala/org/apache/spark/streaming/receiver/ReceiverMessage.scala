@@ -19,7 +19,7 @@ package org.apache.spark.streaming.receiver
 
 import org.apache.spark.streaming.Time
 
-/** Messages sent to the Receiver. */
+/** Messages sent to the Receiver.  发送给接收者的消息。*/
 private[streaming] sealed trait ReceiverMessage extends Serializable
 private[streaming] object StopReceiver extends ReceiverMessage
 private[streaming] case class CleanupOldBlocks(threshTime: Time) extends ReceiverMessage

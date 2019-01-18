@@ -24,19 +24,22 @@ import org.apache.spark.internal.Logging
 
 /**
  * Provides waitToPush() method to limit the rate at which receivers consume data.
+  * 提供waitToPush()方法来限制接收器使用数据的速度。
  *
  * waitToPush method will block the thread if too many messages have been pushed too quickly,
  * and only return when a new message has been pushed. It assumes that only one message is
  * pushed at a time.
+  * waitToPush方法将在推送太多消息太快时阻塞线程，并且只在推送新消息时返回。它假设一次只推送一条消息。
  *
  * The spark configuration spark.streaming.receiver.maxRate gives the maximum number of messages
  * per second that each receiver will accept.
+  * 星火组态火花。流。接收器。maxRate给出每个接收方每秒将接受的最大消息数。
  *
  * @param conf spark configuration
  */
 private[receiver] abstract class RateLimiter(conf: SparkConf) extends Logging {
 
-  // treated as an upper limit
+  // treated as an upper limit  作为上限处理
   private val maxRateLimit = conf.getLong("spark.streaming.receiver.maxRate", Long.MaxValue)
   private lazy val rateLimiter = GuavaRateLimiter.create(getInitialRateLimit().toDouble)
 
@@ -46,6 +49,7 @@ private[receiver] abstract class RateLimiter(conf: SparkConf) extends Logging {
 
   /**
    * Return the current rate limit. If no limit has been set so far, it returns {{{Long.MaxValue}}}.
+    * 返回当前的速率限制。如果到目前为止没有设置任何限制，则返回{{{Long.MaxValue}}}。
    */
   def getCurrentLimit: Long = rateLimiter.getRate.toLong
 

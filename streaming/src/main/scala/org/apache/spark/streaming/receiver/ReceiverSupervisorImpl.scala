@@ -41,6 +41,8 @@ import org.apache.spark.util.RpcUtils
  * which provides all the necessary functionality for handling the data received by
  * the receiver. Specifically, it creates a [[org.apache.spark.streaming.receiver.BlockGenerator]]
  * object that is used to divide the received data stream into blocks of data.
+  * org.apache.spark. stream.receiver 的具体实现。它为处理接收方接收的数据提供了所有必要的功能。
+  * 具体地说，它创建了一个[[org.apache.spark. stream.receiver]。块生成器]]对象，用于将接收到的数据流划分为数据块。
  */
 private[streaming] class ReceiverSupervisorImpl(
     receiver: Receiver[_],
@@ -68,10 +70,10 @@ private[streaming] class ReceiverSupervisorImpl(
   }
 
 
-  /** Remote RpcEndpointRef for the ReceiverTracker */
+  /** Remote RpcEndpointRef for the ReceiverTracker   接收跟踪器的远程RpcEndpointRef*/
   private val trackerEndpoint = RpcUtils.makeDriverRef("ReceiverTracker", env.conf, env.rpcEnv)
 
-  /** RpcEndpointRef for receiving messages from the ReceiverTracker in the driver */
+  /** RpcEndpointRef for receiving messages from the ReceiverTracker in the driver  用于从驱动程序中的ReceiverTracker接收消息*/
   private val endpoint = env.rpcEnv.setupEndpoint(
     "Receiver-" + streamId + "-" + System.currentTimeMillis(), new ThreadSafeRpcEndpoint {
       override val rpcEnv: RpcEnv = env.rpcEnv
@@ -91,12 +93,13 @@ private[streaming] class ReceiverSupervisorImpl(
       }
     })
 
-  /** Unique block ids if one wants to add blocks directly */
+  /** Unique block ids if one wants to add blocks directly  如果要直接添加块，则使用唯一块id*/
   private val newBlockId = new AtomicLong(System.currentTimeMillis())
 
   private val registeredBlockGenerators = new ConcurrentLinkedQueue[BlockGenerator]()
 
-  /** Divides received data records into data blocks for pushing in BlockManager. */
+  /** Divides received data records into data blocks for pushing in BlockManager.
+    * 将接收到的数据记录划分为数据块，以推入BlockManager。*/
   private val defaultBlockGeneratorListener = new BlockGeneratorListener {
     def onAddData(data: Any, metadata: Any): Unit = { }
 
@@ -112,15 +115,16 @@ private[streaming] class ReceiverSupervisorImpl(
   }
   private val defaultBlockGenerator = createBlockGenerator(defaultBlockGeneratorListener)
 
-  /** Get the current rate limit of the default block generator */
+  /** Get the current rate limit of the default block generator  获取默认块生成器的当前速率限制*/
   override private[streaming] def getCurrentRateLimit: Long = defaultBlockGenerator.getCurrentLimit
 
-  /** Push a single record of received data into block generator. */
+  /** Push a single record of received data into block generator.  将接收到的数据的单个记录推入块生成器。*/
   def pushSingle(data: Any) {
     defaultBlockGenerator.addData(data)
   }
 
-  /** Store an ArrayBuffer of received data as a data block into Spark's memory. */
+  /** Store an ArrayBuffer of received data as a data block into Spark's memory.
+    * 将接收数据的ArrayBuffer作为数据块存储到Spark的内存中。*/
   def pushArrayBuffer(
       arrayBuffer: ArrayBuffer[_],
       metadataOption: Option[Any],
@@ -129,7 +133,8 @@ private[streaming] class ReceiverSupervisorImpl(
     pushAndReportBlock(ArrayBufferBlock(arrayBuffer), metadataOption, blockIdOption)
   }
 
-  /** Store an iterator of received data as a data block into Spark's memory. */
+  /** Store an iterator of received data as a data block into Spark's memory.
+    * 将接收数据的迭代器作为数据块存储到Spark的内存中*/
   def pushIterator(
       iterator: Iterator[_],
       metadataOption: Option[Any],
@@ -138,7 +143,8 @@ private[streaming] class ReceiverSupervisorImpl(
     pushAndReportBlock(IteratorBlock(iterator), metadataOption, blockIdOption)
   }
 
-  /** Store the bytes of received data as a data block into Spark's memory. */
+  /** Store the bytes of received data as a data block into Spark's memory.
+    * 将接收到的数据字节作为数据块存储到Spark的内存中。*/
   def pushBytes(
       bytes: ByteBuffer,
       metadataOption: Option[Any],
@@ -147,7 +153,7 @@ private[streaming] class ReceiverSupervisorImpl(
     pushAndReportBlock(ByteBufferBlock(bytes), metadataOption, blockIdOption)
   }
 
-  /** Store block and report it to driver */
+  /** Store block and report it to driver  存储块并报告给驱动程序*/
   def pushAndReportBlock(
       receivedBlock: ReceivedBlock,
       metadataOption: Option[Any],
@@ -194,7 +200,7 @@ private[streaming] class ReceiverSupervisorImpl(
 
   override def createBlockGenerator(
       blockGeneratorListener: BlockGeneratorListener): BlockGenerator = {
-    // Cleanup BlockGenerators that have already been stopped
+    // Cleanup BlockGenerators that have already been stopped  清除已经停止的块生成器
     val stoppedGenerators = registeredBlockGenerators.asScala.filter{ _.isStopped() }
     stoppedGenerators.foreach(registeredBlockGenerators.remove(_))
 

@@ -33,21 +33,23 @@ import org.apache.spark.streaming.util.{WriteAheadLogRecordHandle, WriteAheadLog
 import org.apache.spark.util.{Clock, SystemClock, ThreadUtils}
 import org.apache.spark.util.io.ChunkedByteBuffer
 
-/** Trait that represents the metadata related to storage of blocks */
+/** Trait that represents the metadata related to storage of blocks  表示与块的存储相关的元数据的特征*/
 private[streaming] trait ReceivedBlockStoreResult {
-  // Any implementation of this trait will store a block id
+  // Any implementation of this trait will store a block id   此特征的任何实现都将存储块id
   def blockId: StreamBlockId
-  // Any implementation of this trait will have to return the number of records
+  // Any implementation of this trait will have to return the number of records  这个特性的任何实现都必须返回记录的数量
   def numRecords: Option[Long]
 }
 
-/** Trait that represents a class that handles the storage of blocks received by receiver */
+/** Trait that represents a class that handles the storage of blocks received by receiver
+  * 表示处理接收方接收的块的存储的类的特征 */
 private[streaming] trait ReceivedBlockHandler {
 
-  /** Store a received block with the given block id and return related metadata */
+  /** Store a received block with the given block id and return related metadata
+    * 使用给定的块id存储接收到的块，并返回相关的元数据*/
   def storeBlock(blockId: StreamBlockId, receivedBlock: ReceivedBlock): ReceivedBlockStoreResult
 
-  /** Cleanup old blocks older than the given threshold time */
+  /** Cleanup old blocks older than the given threshold time  清除超过给定阈值时间的旧块*/
   def cleanupOldBlocks(threshTime: Long): Unit
 }
 
@@ -56,6 +58,7 @@ private[streaming] trait ReceivedBlockHandler {
  * Implementation of [[org.apache.spark.streaming.receiver.ReceivedBlockStoreResult]]
  * that stores the metadata related to storage of blocks using
  * [[org.apache.spark.streaming.receiver.BlockManagerBasedBlockHandler]]
+  * org.apache.spark.streaming.receiver的实现。它使用org.apache. spark.stream.receivedblockstoreresult存储与块存储相关的元数据。
  */
 private[streaming] case class BlockManagerBasedStoreResult(
       blockId: StreamBlockId, numRecords: Option[Long])
@@ -65,6 +68,7 @@ private[streaming] case class BlockManagerBasedStoreResult(
 /**
  * Implementation of a [[org.apache.spark.streaming.receiver.ReceivedBlockHandler]] which
  * stores the received blocks into a block manager with the specified storage level.
+  * 一个org.apache.spark.stream.receiver的实现。它将接收到的块存储到具有指定存储级别的块管理器中。
  */
 private[streaming] class BlockManagerBasedBlockHandler(
     blockManager: BlockManager, storageLevel: StorageLevel)
@@ -110,6 +114,8 @@ private[streaming] class BlockManagerBasedBlockHandler(
  * Implementation of [[org.apache.spark.streaming.receiver.ReceivedBlockStoreResult]]
  * that stores the metadata related to storage of blocks using
  * [[org.apache.spark.streaming.receiver.WriteAheadLogBasedBlockHandler]]
+  * org.apache.spark.streaming.receiver的实现。
+  * 它使用org.apache.spark.stream.receiver.writeaheadlogbasedblockhandler来存储与块存储相关的元数据。
  */
 private[streaming] case class WriteAheadLogBasedStoreResult(
     blockId: StreamBlockId,
@@ -121,6 +127,7 @@ private[streaming] case class WriteAheadLogBasedStoreResult(
 /**
  * Implementation of a [[org.apache.spark.streaming.receiver.ReceivedBlockHandler]] which
  * stores the received blocks in both, a write ahead log and a block manager.
+  * 一个[[org.apache.spark. stream.receiver]的实现。它将接收到的块存储在一个写前日志和一个块管理器中
  */
 private[streaming] class WriteAheadLogBasedBlockHandler(
     blockManager: BlockManager,
@@ -154,12 +161,13 @@ private[streaming] class WriteAheadLogBasedBlockHandler(
       s"$effectiveStorageLevel when write ahead log is enabled")
   }
 
-  // Write ahead log manages
+  // Write ahead log manages 写前日志管理
   private val writeAheadLog = WriteAheadLogUtils.createLogForReceiver(
     conf, checkpointDirToLogDir(checkpointDir, streamId), hadoopConf)
 
   // For processing futures used in parallel block storing into block manager and write ahead log
   // # threads = 2, so that both writing to BM and WAL can proceed in parallel
+  // 用于处理存储到块管理器中的并行块中使用的期货，并提前写入日志# threads = 2，这样对BM和WAL的写入都可以并行进行
   implicit private val executionContext = ExecutionContext.fromExecutorService(
     ThreadUtils.newDaemonFixedThreadPool(2, this.getClass.getSimpleName))
 
@@ -167,11 +175,13 @@ private[streaming] class WriteAheadLogBasedBlockHandler(
    * This implementation stores the block into the block manager as well as a write ahead log.
    * It does this in parallel, using Scala Futures, and returns only after the block has
    * been stored in both places.
+    * 此实现将块存储到块管理器以及写前日志中。
+    * 它使用Scala Futures并行地执行此操作，并且只有在块存储在两个位置之后才返回。
    */
   def storeBlock(blockId: StreamBlockId, block: ReceivedBlock): ReceivedBlockStoreResult = {
 
     var numRecords = Option.empty[Long]
-    // Serialize the block so that it can be inserted into both
+    // Serialize the block so that it can be inserted into both  序列化块，以便可以将其插入到这两个块中
     val serializedBlock = block match {
       case ArrayBufferBlock(arrayBuffer) =>
         numRecords = Some(arrayBuffer.size.toLong)
@@ -206,6 +216,7 @@ private[streaming] class WriteAheadLogBasedBlockHandler(
     }
 
     // Combine the futures, wait for both to complete, and return the write ahead log record handle
+    // 组合期货，等待两者完成，并返回write ahead log记录句柄
     val combinedFuture = storeInBlockManagerFuture.zip(storeInWriteAheadLogFuture).map(_._2)
     val walRecordHandle = ThreadUtils.awaitResult(combinedFuture, blockStoreTimeout)
     WriteAheadLogBasedStoreResult(blockId, numRecords, walRecordHandle)
@@ -228,7 +239,7 @@ private[streaming] object WriteAheadLogBasedBlockHandler {
 }
 
 /**
- * A utility that will wrap the Iterator to get the count
+ * A utility that will wrap the Iterator to get the count 一个实用程序，它将包装迭代器以获取计数
  */
 private[streaming] class CountingIterator[T](iterator: Iterator[T]) extends Iterator[T] {
    private var _count = 0
