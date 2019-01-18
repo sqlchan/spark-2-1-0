@@ -25,14 +25,17 @@ private[streaming] case class ReceiverErrorInfo(
     lastErrorMessage: String = "", lastError: String = "", lastErrorTime: Long = -1L)
 
 /**
- * Class having information about a receiver.
+ * Class having information about a receiver. 类具有有关接收器的信息
  *
  * @param receiverId the unique receiver id
  * @param state the current Receiver state
  * @param scheduledLocations the scheduled locations provided by ReceiverSchedulingPolicy
+  *                           receiverscheduling策略提供的计划位置
  * @param runningExecutor the running executor if the receiver is active
+  *                        正在运行的执行程序，如果接收方是活动的
  * @param name the receiver name
  * @param endpoint the receiver endpoint. It can be used to send messages to the receiver
+  *                 接收机端点。它可以用来向接收者发送消息
  * @param errorInfo the receiver error information if it fails
  */
 private[streaming] case class ReceiverTrackingInfo(

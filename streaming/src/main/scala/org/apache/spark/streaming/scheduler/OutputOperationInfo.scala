@@ -22,7 +22,7 @@ import org.apache.spark.streaming.Time
 
 /**
  * :: DeveloperApi ::
- * Class having information on output operations.
+ * Class having information on output operations.  类具有关于输出操作的信息。
  * @param batchTime Time of the batch
  * @param id Id of this output operation. Different output operations have different ids in a batch.
  * @param name The name of this output operation.
@@ -42,7 +42,7 @@ case class OutputOperationInfo(
     failureReason: Option[String]) {
 
   /**
-   * Return the duration of this output operation.
+   * Return the duration of this output operation.  返回此输出操作的持续时间
    */
   def duration: Option[Long] = for (s <- startTime; e <- endTime) yield e - s
 }

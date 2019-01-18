@@ -41,11 +41,13 @@ private[scheduler] case class ErrorReported(msg: String, e: Throwable) extends J
 /**
  * This class schedules jobs to be run on Spark. It uses the JobGenerator to generate
  * the jobs and runs them using a thread pool.
+  * 该类将作业安排在Spark上运行。它使用JobGenerator生成作业，并使用线程池运行它们
  */
 private[streaming]
 class JobScheduler(val ssc: StreamingContext) extends Logging {
 
   // Use of ConcurrentHashMap.keySet later causes an odd runtime problem due to Java 7/8 diff
+  // ConcurrentHashMap的使用。由于Java 7/8差异，keySet稍后会导致奇怪的运行时问题
   // https://gist.github.com/AlainODea/1375759b8720a3f9f094
   private val jobSets: java.util.Map[Time, JobSet] = new ConcurrentHashMap[Time, JobSet]
   private val numConcurrentJobs = ssc.conf.getInt("spark.streaming.concurrentJobs", 1)
@@ -57,8 +59,10 @@ class JobScheduler(val ssc: StreamingContext) extends Logging {
 
   // These two are created only when scheduler starts.
   // eventLoop not being null means the scheduler has been started and not stopped
+  // 只有在调度程序启动时才创建这两个。eventLoop不为空意味着调度程序已经启动而没有停止
   var receiverTracker: ReceiverTracker = null
   // A tracker to track all the input stream information as well as processed record number
+  // 一种跟踪器，用于跟踪所有输入流信息以及处理后的记录号
   var inputInfoTracker: InputInfoTracker = null
 
   private var executorAllocationManager: Option[ExecutorAllocationManager] = None
@@ -77,6 +81,7 @@ class JobScheduler(val ssc: StreamingContext) extends Logging {
     eventLoop.start()
 
     // attach rate controllers of input streams to receive batch completion updates
+    // 附加输入流的速率控制器以接收批处理完成更新
     for {
       inputDStream <- ssc.graph.getInputStreams
       rateController <- inputDStream.rateController
@@ -119,13 +124,14 @@ class JobScheduler(val ssc: StreamingContext) extends Logging {
 
     // Second, stop generating jobs. If it has to process all received data,
     // then this will wait for all the processing through JobScheduler to be over.
+    // 第二，停止创造就业机会。如果它必须处理所有接收到的数据，那么它将等待JobScheduler完成所有处理
     jobGenerator.stop(processAllReceivedData)
 
     // Stop the executor for receiving new jobs
     logDebug("Stopping job executor")
     jobExecutor.shutdown()
 
-    // Wait for the queued jobs to complete if indicated
+    // Wait for the queued jobs to complete if indicated  如果指定，等待排队作业完成
     val terminated = if (processAllReceivedData) {
       jobExecutor.awaitTermination(1, TimeUnit.HOURS)  // just a very large period of time
     } else {
@@ -186,6 +192,7 @@ class JobScheduler(val ssc: StreamingContext) extends Logging {
     if (isFirstJobOfJobSet) {
       // "StreamingListenerBatchStarted" should be posted after calling "handleJobStart" to get the
       // correct "jobSet.processingStartTime".
+      // “StreamingListenerBatchStarted”应该在调用“handleJobStart”之后发布，以获得正确的“jobSet.processingStartTime”。
       listenerBus.post(StreamingListenerBatchStarted(jobSet.toBatchInfo))
     }
     job.setStartTime(startTime)

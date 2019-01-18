@@ -23,7 +23,7 @@ import org.apache.spark.streaming.Time
 
 /**
  * Class representing a set of Jobs
- * belong to the same batch.
+ * belong to the same batch.  类表示属于同一批的作业集。
  */
 private[streaming]
 case class JobSet(
@@ -52,11 +52,11 @@ case class JobSet(
 
   def hasCompleted: Boolean = incompleteJobs.isEmpty
 
-  // Time taken to process all the jobs from the time they started processing
+  // Time taken to process all the jobs from the time they started processing  从开始处理作业开始处理所有作业所花费的时间
   // (i.e. not including the time they wait in the streaming scheduler queue)
   def processingDelay: Long = processingEndTime - processingStartTime
 
-  // Time taken to process all the jobs from the time they were submitted
+  // Time taken to process all the jobs from the time they were submitted  从提交作业开始处理所有作业所花费的时间
   // (i.e. including the time they wait in the streaming scheduler queue)
   def totalDelay: Long = processingEndTime - time.milliseconds
 

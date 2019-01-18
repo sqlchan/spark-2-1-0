@@ -32,17 +32,27 @@ import org.apache.spark.util.{Clock, Utils}
  * micro-batch model of streaming prevents any particular executors from being idle for a long
  * time. Instead, the measure of "idle-ness" needs to be based on the time taken to process
  * each batch.
+  * 类，该类管理分配给StreamingContext的执行程序，并根据流计算的统计信息动态请求或杀死执行程序。
+  * 这不同于核心的动态分配策略;核心策略依赖于执行器空闲一段时间，但是流的微批处理模型防止任何特定的执行器长时间空闲。
+  * 相反，“空闲”的度量需要基于处理每个批的时间。
  *
  * At a high level, the policy implemented by this class is as follows:
+  * 在高层，该类实现的策略如下:
  * - Use StreamingListener interface get batch processing times of completed batches
+  * 使用StreamingListener接口获取已完成批次的批处理时间
  * - Periodically take the average batch completion times and compare with the batch interval
+  * 定期获取平均批处理完成时间并与批处理间隔进行比较
  * - If (avg. proc. time / batch interval) >= scaling up ratio, then request more executors.
  *   The number of executors requested is based on the ratio = (avg. proc. time / batch interval).
+  *   如果(avg. proc. time / batch interval) >=比例增大，则请求更多的执行器。
+  *   请求的执行器数量基于比率= (avg. proc. time / batch interval)。
  * - If (avg. proc. time / batch interval) <= scaling down ratio, then try to kill an executor that
  *   is not running a receiver.
+  *   如果(avg. proc. time / batch interval) <=按比例缩小，则尝试杀死不运行接收器的执行程序。
  *
  * This features should ideally be used in conjunction with backpressure, as backpressure ensures
  * system stability, while executors are being readjusted.
+  * 理想情况下，这种特性应该与反压力一起使用，因为反压力确保了系统的稳定性，而执行器正在进行调整。
  */
 private[streaming] class ExecutorAllocationManager(
     client: ExecutorAllocationClient,
@@ -84,6 +94,7 @@ private[streaming] class ExecutorAllocationManager(
   /**
    * Manage executor allocation by requesting or killing executors based on the collected
    * batch statistics.
+    * 根据收集的批处理统计信息，通过请求或杀死执行程序来管理执行程序分配。
    */
   private def manageAllocation(): Unit = synchronized {
     logInfo(s"Managing executor allocation with ratios = [$scalingUpRatio, $scalingDownRatio]")
@@ -104,7 +115,8 @@ private[streaming] class ExecutorAllocationManager(
     batchProcTimeCount = 0
   }
 
-  /** Request the specified number of executors over the currently active one */
+  /** Request the specified number of executors over the currently active one
+    * 在当前活动的执行器上请求指定数量的执行器*/
   private def requestExecutors(numNewExecutors: Int): Unit = {
     require(numNewExecutors >= 1)
     val allExecIds = client.getExecutorIds()
@@ -115,7 +127,7 @@ private[streaming] class ExecutorAllocationManager(
     logInfo(s"Requested total $targetTotalExecutors executors")
   }
 
-  /** Kill an executor that is not running any receiver, if possible */
+  /** Kill an executor that is not running any receiver, if possible  如果可能，杀死不运行任何接收器的执行程序*/
   private def killExecutor(): Unit = {
     val allExecIds = client.getExecutorIds()
     logDebug(s"Executors (${allExecIds.size}) = ${allExecIds}")

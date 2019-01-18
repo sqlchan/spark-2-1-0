@@ -25,10 +25,13 @@ import org.apache.spark.internal.Logging
  * by calculating an '''error''' between a measured output and a desired value. In the
  * case of Spark Streaming the error is the difference between the measured processing
  * rate (number of elements/processing delay) and the previous rate.
+  * 实现了一个比例积分导数(PID)控制器，该控制器作用于在火花流中吸收元素的速度。
+  * PID控制器的工作原理是在测量输出和期望值之间计算“误差”。
+  * 在火花流的情况下，误差是测量的处理速率(元件数/处理延迟)与之前的速率之间的差。
  *
  * @see https://en.wikipedia.org/wiki/PID_controller
  *
- * @param batchIntervalMillis the batch duration, in milliseconds
+ * @param batchIntervalMillis the batch duration, in milliseconds  批处理持续时间，单位为毫秒
  * @param proportional how much the correction should depend on the current
  *        error. This term usually provides the bulk of correction and should be positive or zero.
  *        A value too large would make the controller overshoot the setpoint, while a small value
@@ -44,6 +47,7 @@ import org.apache.spark.internal.Logging
  * @param minRate what is the minimum rate that can be estimated.
  *        This must be greater than zero, so that the system always receives some data for rate
  *        estimation to work.
+  *        可以估计的最小速率是多少? 这必须大于零，以便系统总是接收到一些数据，以便进行速率估计。
  */
 private[streaming] class PIDRateEstimator(
     batchIntervalMillis: Long,
@@ -88,16 +92,18 @@ private[streaming] class PIDRateEstimator(
     this.synchronized {
       if (time > latestTime && numElements > 0 && processingDelay > 0) {
 
-        // in seconds, should be close to batchDuration
+        // in seconds, should be close to batchDuration  以秒为单位，应接近批持续时间
         val delaySinceUpdate = (time - latestTime).toDouble / 1000
 
-        // in elements/second
+        // in elements/second  在元素中/秒
         val processingRate = numElements.toDouble / processingDelay * 1000
 
         // In our system `error` is the difference between the desired rate and the measured rate
         // based on the latest batch information. We consider the desired rate to be latest rate,
         // which is what this estimator calculated for the previous batch.
         // in elements/second
+        // 在我们的系统中，“错误”是期望的速率和基于最新批处理信息的测量速率之间的差。
+        // 我们认为期望的速率是最新的速率，这是这个估计值为前一批计算出来的。在元素中/秒
         val error = latestRate - processingRate
 
         // The error integral, based on schedulingDelay as an indicator for accumulated errors.
@@ -109,6 +115,7 @@ private[streaming] class PIDRateEstimator(
         // or integral part, since if we subtracted this rate from the previous "calculated rate",
         // there wouldn't have been any overflowing elements, and the scheduling delay would have
         // been zero.
+
         // (in elements/second)
         val historicalError = schedulingDelay.toDouble * processingRate / batchIntervalMillis
 

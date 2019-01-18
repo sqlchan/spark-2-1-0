@@ -25,12 +25,13 @@ import org.apache.spark.streaming.{StreamingContext, Time}
 
 /**
  * :: DeveloperApi ::
- * Track the information of input stream at specified batch time.
+ * Track the information of input stream at specified batch time. 在指定的批处理时间跟踪输入流的信息
  *
  * @param inputStreamId the input stream id
- * @param numRecords the number of records in a batch
+ * @param numRecords the number of records in a batch  批处理中的记录数
  * @param metadata metadata for this batch. It should contain at least one standard field named
  *                 "Description" which maps to the content that will be shown in the UI.
+  *                 此批处理的元数据。它应该包含至少一个名为“Description”的标准字段，该字段映射到将在UI中显示的内容。
  */
 @DeveloperApi
 case class StreamInputInfo(
@@ -45,7 +46,7 @@ case class StreamInputInfo(
 object StreamInputInfo {
 
   /**
-   * The key for description in `StreamInputInfo.metadata`.
+   * The key for description in `StreamInputInfo.metadata`. “StreamInputInfo.metadata”中描述的关键字。
    */
   val METADATA_KEY_DESCRIPTION: String = "Description"
 }
@@ -53,14 +54,16 @@ object StreamInputInfo {
 /**
  * This class manages all the input streams as well as their input data statistics. The information
  * will be exposed through StreamingListener for monitoring.
+  * 该类管理所有输入流及其输入数据统计信息。这些信息将通过StreamingListener公开，以便进行监视。
  */
 private[streaming] class InputInfoTracker(ssc: StreamingContext) extends Logging {
 
   // Map to track all the InputInfo related to specific batch time and input stream.
+  // 映射以跟踪与特定批处理时间和输入流相关的所有InputInfo。
   private val batchTimeToInputInfos =
     new mutable.HashMap[Time, mutable.HashMap[Int, StreamInputInfo]]
 
-  /** Report the input information with batch time to the tracker */
+  /** Report the input information with batch time to the tracker  将批处理时间的输入信息报告给跟踪器*/
   def reportInfo(batchTime: Time, inputInfo: StreamInputInfo): Unit = synchronized {
     val inputInfos = batchTimeToInputInfos.getOrElseUpdate(batchTime,
       new mutable.HashMap[Int, StreamInputInfo]())

@@ -21,7 +21,7 @@ import org.apache.spark.annotation.DeveloperApi
 
 /**
  * :: DeveloperApi ::
- * Class having information about a receiver
+ * Class having information about a receiver  类具有有关接收器的信息
  */
 @DeveloperApi
 case class ReceiverInfo(

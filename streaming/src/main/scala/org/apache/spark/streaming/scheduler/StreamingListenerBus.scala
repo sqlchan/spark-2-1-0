@@ -25,6 +25,8 @@ import org.apache.spark.util.ListenerBus
  * Streaming events as WrappedStreamingListenerEvent and send them to Spark listener bus. It also
  * registers itself with Spark listener bus, so that it can receive WrappedStreamingListenerEvents,
  * unwrap them as StreamingListenerEvent and dispatch them to StreamingListeners.
+  * 流侦听器总线，用于将事件转发到流侦听器。这个将把接收到的流事件包装为WrappedStreamingListenerEvent，并将它们发送到Spark侦听器总线。
+  * 它还向Spark侦听器总线注册自己，以便接收包装的streaminglistenerevents，将它们展开为StreamingListenerEvent并将它们分发给streaminglistener侦听器。
  */
 private[streaming] class StreamingListenerBus(sparkListenerBus: LiveListenerBus)
   extends SparkListener with ListenerBus[StreamingListener, StreamingListenerEvent] {
@@ -32,6 +34,7 @@ private[streaming] class StreamingListenerBus(sparkListenerBus: LiveListenerBus)
   /**
    * Post a StreamingListenerEvent to the Spark listener bus asynchronously. This event will be
    * dispatched to all StreamingListeners in the thread of the Spark listener bus.
+    * 将StreamingListenerEvent异步发布到Spark侦听器总线。此事件将被分派给Spark侦听器总线线程中的所有streaminglistener。
    */
   def post(event: StreamingListenerEvent) {
     sparkListenerBus.post(new WrappedStreamingListenerEvent(event))
@@ -72,14 +75,16 @@ private[streaming] class StreamingListenerBus(sparkListenerBus: LiveListenerBus)
   /**
    * Register this one with the Spark listener bus so that it can receive Streaming events and
    * forward them to StreamingListeners.
+    * 向Spark侦听器总线注册这个事件，以便它能够接收流事件并将它们转发给streaminglistener。
    */
   def start(): Unit = {
-    sparkListenerBus.addListener(this) // for getting callbacks on spark events
+    sparkListenerBus.addListener(this) // for getting callbacks on spark events  用于获取spark事件的回调
   }
 
   /**
    * Unregister this one with the Spark listener bus and all StreamingListeners won't receive any
    * events after that.
+    * 取消在Spark侦听器总线上的注册，所有streaminglistener在此之后将不会接收任何事件。
    */
   def stop(): Unit = {
     sparkListenerBus.removeListener(this)
@@ -88,12 +93,14 @@ private[streaming] class StreamingListenerBus(sparkListenerBus: LiveListenerBus)
   /**
    * Wrapper for StreamingListenerEvent as SparkListenerEvent so that it can be posted to Spark
    * listener bus.
+    * 将StreamingListenerEvent包装为SparkListenerEvent，以便将其发布到Spark侦听器总线
    */
   private case class WrappedStreamingListenerEvent(streamingListenerEvent: StreamingListenerEvent)
     extends SparkListenerEvent {
 
     // Do not log streaming events in event log as history server does not support streaming
     // events (SPARK-12140). TODO Once SPARK-12140 is resolved we should set it to true.
+    // 在事件日志中不记录流事件，因为历史服务器不支持流事件
     protected[spark] override def logEvent: Boolean = false
   }
 }

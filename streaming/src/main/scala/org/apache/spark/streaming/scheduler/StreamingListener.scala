@@ -61,6 +61,7 @@ case class StreamingListenerReceiverStopped(receiverInfo: ReceiverInfo)
 /**
  * :: DeveloperApi ::
  * A listener interface for receiving information about an ongoing streaming
+  * 用于接收关于正在进行的流计算的信息的侦听器接口
  * computation.
  */
 @DeveloperApi
@@ -97,7 +98,9 @@ trait StreamingListener {
 /**
  * :: DeveloperApi ::
  * A simple StreamingListener that logs summary statistics across Spark Streaming batches
+  * 一个简单的StreamingListener，可以跨Spark流批记录汇总统计信息
  * @param numBatchInfos Number of last batches to consider for generating statistics (default: 10)
+  *                      生成统计信息时要考虑的最后一批数量
  */
 @DeveloperApi
 class StatsReportListener(numBatchInfos: Int = 10) extends StreamingListener {

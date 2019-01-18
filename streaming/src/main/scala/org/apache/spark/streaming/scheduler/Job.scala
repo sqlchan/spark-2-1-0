@@ -24,6 +24,7 @@ import org.apache.spark.util.{CallSite, Utils}
 
 /**
  * Class representing a Spark computation. It may contain multiple Spark jobs.
+  * 类表示星火计算。它可能包含多个Spark作业。
  */
 private[streaming]
 class Job(val time: Time, func: () => _) {
@@ -47,7 +48,7 @@ class Job(val time: Time, func: () => _) {
   }
 
   /**
-   * @return the global unique id of this Job.
+   * @return the global unique id of this Job. 此作业的全局惟一id。
    */
   def id: String = {
     if (!isSet) {
@@ -58,6 +59,7 @@ class Job(val time: Time, func: () => _) {
 
   /**
    * @return the output op id of this Job. Each Job has a unique output op id in the same JobSet.
+    *         此作业的输出op id。每个作业在同一个作业集中都有唯一的输出op id。
    */
   def outputOpId: Int = {
     if (!isSet) {
