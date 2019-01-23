@@ -27,9 +27,11 @@ import org.apache.spark.internal.Logging
 /**
  * An event loop to receive events from the caller and process all events in the event thread. It
  * will start an exclusive event thread to process all events.
+  * 事件循环，用于从调用方接收事件并处理事件线程中的所有事件。它将启动一个独占事件线程来处理所有事件。
  *
  * Note: The event queue will grow indefinitely. So subclasses should make sure `onReceive` can
  * handle events in time to avoid the potential OOM.
+  * 注意:事件队列将无限增长。因此子类应该确保' onReceive '能够及时处理事件，以避免潜在的OOM。
  */
 private[spark] abstract class EventLoop[E](name: String) extends Logging {
 

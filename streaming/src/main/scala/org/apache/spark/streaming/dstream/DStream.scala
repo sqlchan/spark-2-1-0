@@ -47,8 +47,8 @@ import org.apache.spark.util.{CallSite, Utils}
  * parent DStream.
   * 离散流(DStream)是Spark流中的基本抽象，是表示连续数据流(参见org.apache.spark.rdd)的RDDs连续序列(类型相同)。
   * 有关RDDs的详细信息，请参阅Spark core文档中的RDD)。
-  * DStreams可以使用[[org.apache.spark. streams]从实时数据(例如，来自TCP套接字、Kafka、Flume等的数据)创建。
-  * StreamingContext]]或者它可以通过使用“map”、“window”和“reduceByKeyAndWindow”等操作转换现有的DStreams来生成。
+  * DStreams可以使用org.apache.spark.streams]从实时数据(例如，来自TCP套接字、Kafka、Flume等的数据)创建。
+  * StreamingContext]或者它可以通过使用“map”、“window”和“reduceByKeyAndWindow”等操作转换现有的DStreams来生成。
   * 当Spark流程序运行时，每个DStream定期生成RDD，或者从实时数据生成，或者通过转换父DStream生成的RDD。
  *
  * This class contains the basic operations available on all DStreams, such as `map`, `filter` and
@@ -362,7 +362,7 @@ abstract class DStream[T: ClassTag] (
       // 如果RDD生成的时间有效（例如，在滑动窗口中的正确时间），则计算RDD，否则不生成任何内容。
       // of RDD generation, else generate nothing.
       if (isTimeValid(time)) {
-
+        // 每个dstream会在自身实现的compute中进行重写
         val rddOption = createRDDWithLocalProperties(time, displayInnerRDDOps = false) {
           // Disable checks for existing output directories in jobs launched by the streaming
           // scheduler, since we may need to write output to an existing directory during checkpoint
@@ -387,6 +387,7 @@ abstract class DStream[T: ClassTag] (
             newRDD.checkpoint()
             logInfo(s"Marking RDD ${newRDD.id} for time $time for checkpointing")
           }
+          // 把生成的RDD保存到generateRDD 哈希map中，便于下次使用
           generatedRDDs.put(time, newRDD)
         }
         rddOption
@@ -470,6 +471,7 @@ abstract class DStream[T: ClassTag] (
     * 此默认实现创建一个作业，该作业实现相应的RDD。DStream的子类可以覆盖它来生成它们自己的作业。
    */
   private[streaming] def generateJob(time: Time): Option[Job] = {
+    // getorcompute方法生成RDD，
     getOrCompute(time) match {
       case Some(rdd) =>
         val jobFunc = () => {

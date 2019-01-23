@@ -552,7 +552,7 @@ class StreamingContext private[streaming] (
   /**
    * Add a [[org.apache.spark.streaming.scheduler.StreamingListener]] object for
    * receiving system events related to streaming.
-    * 添加一个[[org.apache.spark.streaming.scheduler。对象，用于接收与流相关的系统事件。
+    * 添加一个org.apache.spark.streaming.scheduler。对象，用于接收与流相关的系统事件。
    */
   def addStreamingListener(streamingListener: StreamingListener) {
     scheduler.listenerBus.addListener(streamingListener)
@@ -621,10 +621,10 @@ class StreamingContext private[streaming] (
    *
    * @throws IllegalStateException if the StreamingContext is already stopped.
    */
-  def start(): Unit = synchronized {
+  def start(): Unit = synchronized {    //在一个线程中启动jobscheduler
     state match {
       case INITIALIZED =>
-        startSite.set(DStream.getCreationSite())
+        startSite.set(DStream.getCreationSite())      // 从创建DStream的堆栈跟踪中获取DStream的创建站点。
         StreamingContext.ACTIVATION_LOCK.synchronized {
           StreamingContext.assertNoOtherContextIsActive()
           try {
@@ -639,7 +639,7 @@ class StreamingContext private[streaming] (
               sparkContext.clearJobGroup()
               sparkContext.setLocalProperty(SparkContext.SPARK_JOB_INTERRUPT_ON_CANCEL, "false")
               savedProperties.set(SerializationUtils.clone(sparkContext.localProperties.get()))
-              scheduler.start()
+              scheduler.start()  //启动jobscheduler
             }
             state = StreamingContextState.ACTIVE
           } catch {

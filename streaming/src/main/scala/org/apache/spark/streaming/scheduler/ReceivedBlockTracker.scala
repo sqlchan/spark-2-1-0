@@ -116,6 +116,7 @@ private[streaming] class ReceivedBlockTracker(
    * This event will get written to the write ahead log (if enabled).
     * 将所有未分配的块分配给给定批处理。此事件将写入提前写入日志(如果启用)。
    */
+  // allocateBlocksToBatch方法对本次批处理进行分配数据块，处理之前把批处理时间和对应的数据块的元信息记录到预写日志文件中
   def allocateBlocksToBatch(batchTime: Time): Unit = synchronized {
     if (lastAllocatedBatchTime == null || batchTime > lastAllocatedBatchTime) {
       val streamIdToBlocks = streamIds.map { streamId =>

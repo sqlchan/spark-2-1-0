@@ -43,12 +43,12 @@ import org.apache.spark.streaming.util.WriteAheadLogUtils
 
 object KafkaUtils {
   /**
-   * Create an input stream that pulls messages from Kafka Brokers.
+   * Create an input stream that pulls messages from Kafka Brokers. 创建一个从Kafka代理提取消息的输入流。
    * @param ssc       StreamingContext object
    * @param zkQuorum  Zookeeper quorum (hostname:port,hostname:port,..)
    * @param groupId   The group id for this consumer
    * @param topics    Map of (topic_name to numPartitions) to consume. Each partition is consumed
-   *                  in its own thread
+   *                  in its own thread  将(topic_name映射到numPartitions)消费。每个分区在其自己的线程中使用
    * @param storageLevel  Storage level to use for storing the received objects
    *                      (default: StorageLevel.MEMORY_AND_DISK_SER_2)
    * @return DStream of (Kafka message key, Kafka message value)
@@ -172,7 +172,7 @@ object KafkaUtils {
       storageLevel)
   }
 
-  /** get leaders for the given offset ranges, or throw an exception */
+  /** get leaders for the given offset ranges, or throw an exception  获取给定偏移量范围的前导，或抛出异常*/
   private def leadersForRanges(
       kc: KafkaCluster,
       offsetRanges: Array[OffsetRange]): Map[TopicAndPartition, (String, Int)] = {
@@ -224,12 +224,13 @@ object KafkaUtils {
 
   /**
    * Create an RDD from Kafka using offset ranges for each topic and partition.
-   *
+   * 使用每个主题和分区的偏移范围从Kafka创建RDD。
    * @param sc SparkContext object
    * @param kafkaParams Kafka <a href="http://kafka.apache.org/documentation.html#configuration">
    *    configuration parameters</a>. Requires "metadata.broker.list" or "bootstrap.servers"
    *    to be set with Kafka broker(s) (NOT zookeeper servers) specified in
    *    host1:port1,host2:port2 form.
+    * 需要“metadata.broker。列表”或“引导。“服务器”将使用host1:port1、host2:port2表单中指定的Kafka代理(而不是zookeeper服务器)进行设置。
    * @param offsetRanges Each OffsetRange in the batch corresponds to a
    *   range of offsets for a given Kafka topic/partition
    * @tparam K type of Kafka message key
@@ -387,22 +388,32 @@ object KafkaUtils {
    * Create an input stream that directly pulls messages from Kafka Brokers
    * without using any receiver. This stream can guarantee that each message
    * from Kafka is included in transformations exactly once (see points below).
+    * 创建一个输入流，它直接从Kafka代理提取消息，而不使用任何接收器。
+    * 这个流可以确保来自Kafka的每个消息只包含在转换中一次(参见下面的要点)
    *
    * Points to note:
    *  - No receivers: This stream does not use any receiver. It directly queries Kafka
+    *  无接收器:此流不使用任何接收器。它直接查询Kafka
    *  - Offsets: This does not use Zookeeper to store offsets. The consumed offsets are tracked
    *    by the stream itself. For interoperability with Kafka monitoring tools that depend on
    *    Zookeeper, you have to update Kafka/Zookeeper yourself from the streaming application.
    *    You can access the offsets used in each batch from the generated RDDs (see
    *    [[org.apache.spark.streaming.kafka.HasOffsetRanges]]).
+    *    这并不使用Zookeeper来存储偏移量。使用的偏移量由流本身跟踪。
+    *    要与依赖于Zookeeper的Kafka监控工具实现互操作性，您必须从流应用程序中自己更新Kafka/Zookeeper。
+    *    您可以从生成的RDDs中访问每个批处理中使用的偏移量(参见[[org.apache.spark. stream.kafka.hasoffsetranges]])。
    *  - Failure Recovery: To recover from driver failures, you have to enable checkpointing
    *    in the `StreamingContext`. The information on consumed offset can be
    *    recovered from the checkpoint. See the programming guide for details (constraints, etc.).
+    *    故障恢复:要从驱动程序故障中恢复，您必须在“StreamingContext”中启用检查点。
+    *    有关消耗的偏移量的信息可以从检查点恢复。有关详细信息(约束等)，请参见编程指南。
    *  - End-to-end semantics: This stream ensures that every records is effectively received and
    *    transformed exactly once, but gives no guarantees on whether the transformed data are
    *    outputted exactly once. For end-to-end exactly-once semantics, you have to either ensure
    *    that the output operation is idempotent, or use transactions to output records atomically.
    *    See the programming guide for more details.
+    *    端到端语义:这个流确保有效地接收到每个记录并准确地转换一次，但是不能保证转换后的数据是否准确地输出一次。
+    *    对于端到端精确到一次的语义，您必须确保输出操作是幂等的，或者使用事务以原子方式输出记录。有关更多细节，请参见编程指南。
    *
    * @param ssc StreamingContext object
    * @param kafkaParams Kafka <a href="http://kafka.apache.org/documentation.html#configuration">
@@ -412,6 +423,7 @@ object KafkaUtils {
    * @param fromOffsets Per-topic/partition Kafka offsets defining the (inclusive)
    *    starting point of the stream
    * @param messageHandler Function for translating each message and metadata into the desired type
+    *                       函数，用于将每个消息和元数据转换为所需类型
    * @tparam K type of Kafka message key
    * @tparam V type of Kafka message value
    * @tparam KD type of Kafka message key decoder

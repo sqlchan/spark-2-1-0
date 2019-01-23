@@ -37,11 +37,14 @@ import org.apache.spark.util.NextIterator
  * A batch-oriented interface for consuming from Kafka.
  * Starting and ending offsets are specified in advance,
  * so that you can control exactly-once semantics.
+  * 用于从Kafka消费的面向批处理的接口。开始和结束偏移量是预先指定的，这样您就可以精确地控制一次语义。
  * @param kafkaParams Kafka <a href="http://kafka.apache.org/documentation.html#configuration">
  * configuration parameters</a>. Requires "metadata.broker.list" or "bootstrap.servers" to be set
  * with Kafka broker(s) specified in host1:port1,host2:port2 form.
  * @param offsetRanges offset ranges that define the Kafka data belonging to this RDD
+  *                     定义属于此RDD的Kafka数据的偏移范围
  * @param messageHandler function for translating each message into the desired type
+  *                       函数，用于将每个消息转换为所需类型
  */
 private[kafka]
 class KafkaRDD[
@@ -85,6 +88,7 @@ class KafkaRDD[
     }
 
     // Determine in advance how many messages need to be taken from each partition
+    // 预先确定需要从每个分区获取多少消息
     val parts = nonEmptyPartitions.foldLeft(Map[Int, Int]()) { (result, part) =>
       val remain = num - result.values.sum
       if (remain > 0) {
@@ -162,6 +166,7 @@ class KafkaRDD[
 
     // The idea is to use the provided preferred host, except on task retry attempts,
     // to minimize number of kafka metadata requests
+    // 其思想是使用提供的首选主机(任务重试尝试除外)来最小化kafka元数据请求的数量
     private def connectLeader: SimpleConsumer = {
       if (context.attemptNumber > 0) {
         kc.connectLeader(part.topic, part.partition).fold(
@@ -196,6 +201,7 @@ class KafkaRDD[
       val resp = consumer.fetch(req)
       handleFetchErr(resp)
       // kafka may return a batch that starts before the requested offset
+      // kafka可能返回在请求偏移量之前启动的批处理
       resp.messageSet(part.topic, part.partition)
         .iterator
         .dropWhile(_.offset < requestOffset)

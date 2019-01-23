@@ -39,7 +39,7 @@ private[spark] class SystemClock extends Clock {
   def getTimeMillis(): Long = System.currentTimeMillis()
 
   /**
-   * @param targetTime block until the current time is at least this value
+   * @param targetTime block until the current time is at least this value  块，直到当前时间至少为该值为止
    * @return current system time when wait has completed
    */
   def waitTillTime(targetTime: Long): Long = {

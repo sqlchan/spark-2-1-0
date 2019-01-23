@@ -82,14 +82,16 @@ class JobScheduler(val ssc: StreamingContext) extends Logging {
 
     // attach rate controllers of input streams to receive batch completion updates
     // 附加输入流的速率控制器以接收批处理完成更新
+    // 添加 速度控制器 rateController
     for {
       inputDStream <- ssc.graph.getInputStreams
       rateController <- inputDStream.rateController
     } ssc.addStreamingListener(rateController)
 
+    //启动spark streaming消息总线
     listenerBus.start()
-    receiverTracker = new ReceiverTracker(ssc)
-    inputInfoTracker = new InputInfoTracker(ssc)
+    receiverTracker = new ReceiverTracker(ssc)  // 这个类管理ReceiverInputDStreams的接收者的执行。
+    inputInfoTracker = new InputInfoTracker(ssc)  // 该类管理所有输入流及其输入数据统计信息。这些信息将通过StreamingListener公开，以便进行监视。
 
     val executorAllocClient: ExecutorAllocationClient = ssc.sparkContext.schedulerBackend match {
       case b: ExecutorAllocationClient => b.asInstanceOf[ExecutorAllocationClient]
@@ -103,8 +105,9 @@ class JobScheduler(val ssc: StreamingContext) extends Logging {
       ssc.graph.batchDuration.milliseconds,
       clock)
     executorAllocationManager.foreach(ssc.addStreamingListener)
-    receiverTracker.start()
-    jobGenerator.start()
+    // 启动 receiverTracker 和 jobGenerator
+    receiverTracker.start()   // 启动端点和接收器执行线程
+    jobGenerator.start()      // 初始化定时器的开启时间、启动DstreamGraph、启动定时器
     executorAllocationManager.foreach(_.start())
     logInfo("Started JobScheduler")
   }
@@ -149,12 +152,15 @@ class JobScheduler(val ssc: StreamingContext) extends Logging {
     logInfo("Stopped JobScheduler")
   }
 
+  // 提交作业
   def submitJobSet(jobSet: JobSet) {
     if (jobSet.jobs.isEmpty) {
       logInfo("No jobs added for time " + jobSet.time)
     } else {
       listenerBus.post(StreamingListenerBatchSubmitted(jobSet.toBatchInfo))
       jobSets.put(jobSet.time, jobSet)
+      // 遍历jobset里的所有作业，然后通过jobexecutor这个线程池把所有的作业进行提交
+      // jobhandle做两类事：作业运行前后分别发送jobsend消息和jobcompleted消息给jobschedule；进行作业的运行
       jobSet.jobs.foreach(job => jobExecutor.execute(new JobHandler(job)))
       logInfo("Added jobs for time " + jobSet.time)
     }
@@ -257,6 +263,7 @@ class JobScheduler(val ssc: StreamingContext) extends Logging {
           // Disable checks for existing output directories in jobs launched by the streaming
           // scheduler, since we may need to write output to an existing directory during checkpoint
           // recovery; see SPARK-4835 for more details.
+          // 禁用流调度器启动的作业中现有输出目录的检查，因为在检查点恢复期间可能需要将输出写入现有目录;有关详细信息，请参见SPARK-4835。
           PairRDDFunctions.disableOutputSpecValidation.withValue(true) {
             job.run()
           }

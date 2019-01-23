@@ -35,11 +35,12 @@ import org.apache.spark.util.ThreadUtils
 
 /**
  * Input stream that pulls messages from a Kafka Broker.
- *
- * @param kafkaParams Map of kafka configuration parameters.
+ *  从Kafka代理提取消息的输入流。
+ * @param kafkaParams Map of kafka configuration parameters.  kafka配置参数映射。
  *                    See: http://kafka.apache.org/configuration.html
  * @param topics Map of (topic_name to numPartitions) to consume. Each partition is consumed
  * in its own thread.
+  * 将(topic_name映射到numPartitions)消费。每个分区在其自己的线程中使用。
  * @param storageLevel RDD storage level.
  */
 private[streaming]
@@ -50,7 +51,7 @@ class KafkaInputDStream[
   T <: Decoder[_]: ClassTag](
     _ssc: StreamingContext,
     kafkaParams: Map[String, String],
-    topics: Map[String, Int],
+    topics: Map[String, Int],   // (主题，#streams)对的映射, 为每个主题创建一个MessageStreams列表。
     useReliableReceiver: Boolean,
     storageLevel: StorageLevel
   ) extends ReceiverInputDStream[(K, V)](_ssc) with Logging {
@@ -108,6 +109,7 @@ class KafkaReceiver[
       .asInstanceOf[Decoder[V]]
 
     // Create threads for each topic/message Stream we are listening
+    // 为我们正在监听的每个主题/消息流创建线程
     val topicMessageStreams = consumerConnector.createMessageStreams(
       topics, keyDecoder, valueDecoder)
 
@@ -115,6 +117,7 @@ class KafkaReceiver[
       ThreadUtils.newDaemonFixedThreadPool(topics.values.sum, "KafkaMessageHandler")
     try {
       // Start the messages handler for each partition
+      // 启动每个分区的消息处理程序
       topicMessageStreams.values.foreach { streams =>
         streams.foreach { stream => executorPool.submit(new MessageHandler(stream)) }
       }

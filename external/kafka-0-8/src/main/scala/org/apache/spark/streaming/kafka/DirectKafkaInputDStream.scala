@@ -39,11 +39,14 @@ import org.apache.spark.streaming.scheduler.rate.RateEstimator
  * The spark configuration spark.streaming.kafka.maxRatePerPartition gives the maximum number
  *  of messages
  * per second that each '''partition''' will accept.
+  * 一个[[KafkaRDD]]流，其中每个给定的Kafka主题/分区对应一个RDD分区。
+  * 星火配置spark.streaming.kafka.maxRatePerPartition。给出每个“分区”每秒将接受的最大消息数。
  * Starting offsets are specified in advance,
  * and this DStream is not responsible for committing offsets,
  * so that you can control exactly-once semantics.
  * For an easy interface to Kafka-managed offsets,
  *  see [[KafkaCluster]]
+  *  开始偏移量是预先指定的，这个DStream不负责提交偏移量，因此您可以精确控制一次语义。有关kafka管理偏移量的简单接口，请参见[[KafkaCluster]]
  * @param kafkaParams Kafka <a href="http://kafka.apache.org/documentation.html#configuration">
  * configuration parameters</a>.
  *   Requires "metadata.broker.list" or "bootstrap.servers" to be set with Kafka broker(s),
@@ -51,6 +54,7 @@ import org.apache.spark.streaming.scheduler.rate.RateEstimator
  * @param fromOffsets per-topic/partition Kafka offsets defining the (inclusive)
  *  starting point of the stream
  * @param messageHandler function for translating each message into the desired type
+  *                       函数，用于将每个消息转换为所需类型
  */
 private[streaming]
 class DirectKafkaInputDStream[
@@ -68,6 +72,7 @@ class DirectKafkaInputDStream[
     "spark.streaming.kafka.maxRetries", 1)
 
   // Keep this consistent with how other streams are named (e.g. "Flume polling stream [2]")
+  // 与其他流的命名方式保持一致。“水槽轮询流[2]”)
   private[streaming] override def name: String = s"Kafka direct stream [$id]"
 
   protected[streaming] override val checkpointData =
@@ -76,6 +81,7 @@ class DirectKafkaInputDStream[
 
   /**
    * Asynchronously maintains & sends new rate limits to the receiver through the receiver tracker.
+    * 通过接收器跟踪器异步维护和发送新的速率限制。
    */
   override protected[streaming] val rateController: Option[RateController] = {
     if (RateController.isBackPressureEnabled(ssc.conf)) {

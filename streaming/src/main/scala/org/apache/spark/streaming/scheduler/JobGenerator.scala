@@ -100,7 +100,7 @@ class JobGenerator(jobScheduler: JobScheduler) extends Logging {
     eventLoop.start()
 
     if (ssc.isCheckpointPresent) {
-      restart()
+      restart()   //如果不是第一次运行需要进行上次检查点的恢复
     } else {
       startFirstTime()
     }
@@ -200,9 +200,9 @@ class JobGenerator(jobScheduler: JobScheduler) extends Logging {
 
   /** Starts the generator for the first time  第一次启动生成器*/
   private def startFirstTime() {
-    val startTime = new Time(timer.getStartTime())
-    graph.start(startTime - graph.batchDuration)
-    timer.start(startTime.milliseconds)
+    val startTime = new Time(timer.getStartTime())  //初始化定时器的开启时间
+    graph.start(startTime - graph.batchDuration)    //启动DstreamGraph
+    timer.start(startTime.milliseconds)             //启动定时器
     logInfo("Started JobGenerator at " + startTime)
   }
 
@@ -252,13 +252,17 @@ class JobGenerator(jobScheduler: JobScheduler) extends Logging {
     logInfo("Restarted JobGenerator at " + restartTime)
   }
 
-  /** Generate jobs and perform checkpointing for the given `time`.   生成作业并为给定的“时间”执行检查点*/
+  /** Generate jobs and perform checkpointing for the given `time`.   生成作业并为给定的“时间”执行检查点
+    * ssc.graph.batchDuration
+    * */
   private def generateJobs(time: Time) {
     // Checkpoint all RDDs marked for checkpointing to ensure their lineages are
     // truncated periodically. Otherwise, we may run into stack overflows (SPARK-6847).
     // 检查点所有标记为检查点的rdd，以确保它们的血统定期被截断。否则，我们可能会遇到堆栈溢出
     ssc.sparkContext.setLocalProperty(RDD.CHECKPOINT_ALL_MARKED_ANCESTORS, "true")
     Try {
+      // 要求receivertracker将目前已收到的数据进行一次提交，即将上次批处理切分后未处理的数据切分到本次批处理中。
+      // allocateBlocksToBatch方法对本次批处理进行分配数据块，处理之前把批处理时间和对应的数据块的元信息记录到预写日志文件中
       jobScheduler.receiverTracker.allocateBlocksToBatch(time) // allocate received blocks to batch  将接收到的块分配到批处理
       graph.generateJobs(time) // generate jobs using allocated block  使用分配的块生成作业
     } match {

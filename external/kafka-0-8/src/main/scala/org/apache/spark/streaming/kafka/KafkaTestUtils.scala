@@ -45,6 +45,7 @@ import org.apache.spark.util.Utils
 /**
  * This is a helper class for Kafka test suites. This has the functionality to set up
  * and tear down local Kafka servers, and to push data using Kafka producers.
+  * 这是Kafka测试套件的一个助手类。它具有设置和关闭本地Kafka服务器以及使用Kafka生成器推送数据的功能
  *
  * The reason to put Kafka test utility class in src is to test Python related Kafka APIs.
  */

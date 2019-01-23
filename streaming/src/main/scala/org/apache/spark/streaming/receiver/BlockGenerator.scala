@@ -127,12 +127,12 @@ private[streaming] class BlockGenerator(
   @volatile private var currentBuffer = new ArrayBuffer[Any]
   @volatile private var state = Initialized
 
-  /** Start block generating and pushing threads. */
+  /** Start block generating and pushing threads. 开始块生成和推动线程。*/
   def start(): Unit = synchronized {
     if (state == Initialized) {
       state = Active
-      blockIntervalTimer.start()
-      blockPushingThread.start()
+      blockIntervalTimer.start()  //启动数据块生成定时器，将当期currentbuffer缓存中的数据按照用户定义的批处理时间间隔封装成一个block数据块，放到push队列中
+      blockPushingThread.start()  //启动线程，不断将push队列中的数据块发送给blockmanager
       logInfo("Started BlockGenerator")
     } else {
       throw new SparkException(
@@ -177,6 +177,10 @@ private[streaming] class BlockGenerator(
    */
   def addData(data: Any): Unit = {
     if (state == Active) {
+      // 该方法限制速度 ， rateLimiter.acquire()，数据在加入currentbuffer数组时会先有ratelimiter检查一下速率，时候加入的频率太高，
+      // 如果太高，就需要阻塞等到下一秒在添加。最高频率有receiver.maxrate控制，是单个数据流接收器每秒允许添加的条数。
+      // 控制这个速率，就控制了整个sparkstreaming 系统每个批处理需要处理的最大数据量。
+      // spark1.5版本开始streaming加入了分别动态控制每个流数据接收器接受速率的特性
       waitToPush()
       synchronized {
         if (state == Active) {
@@ -249,7 +253,9 @@ private[streaming] class BlockGenerator(
 
   def isStopped(): Boolean = state == StoppedAll
 
-  /** Change the buffer to which single records are added to. 更改添加单个记录的缓冲区。*/
+  /** Change the buffer to which single records are added to. 更改添加单个记录的缓冲区。
+    * 在该函数中先把内存中数据currentbuffer赋值给newblockbuffer，然后把newblockbuffer封装成一个数据块，最后把数据块放到blockforpushing队列中。
+    * */
   private def updateCurrentBuffer(time: Long): Unit = {
     try {
       var newBlock: Block = null
@@ -274,7 +280,9 @@ private[streaming] class BlockGenerator(
     }
   }
 
-  /** Keep pushing blocks to the BlockManager.  继续向区块管理器推送区块。*/
+  /** Keep pushing blocks to the BlockManager.  继续向区块管理器推送区块。
+    * blockgenerator生成的数据块使用该方法传递给blockmanager，该操作由pushblock方法进行具体实现
+    * */
   private def keepPushingBlocks() {
     logInfo("Started block pushing thread")
 
@@ -285,6 +293,7 @@ private[streaming] class BlockGenerator(
     try {
       // While blocks are being generated, keep polling for to-be-pushed blocks and push them.
       // 在生成块时，对要推的块保持轮询并推它们。
+      // 不断地从blockforpushing队列中取出数据块，间隔是10ms
       while (areBlocksBeingGenerated) {
         Option(blocksForPushing.poll(10, TimeUnit.MILLISECONDS)) match {
           case Some(block) => pushBlock(block)

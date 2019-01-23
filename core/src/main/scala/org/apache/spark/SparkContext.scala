@@ -2261,11 +2261,14 @@ object SparkContext extends Logging {
 
   /**
    * Called to ensure that no other SparkContext is running in this JVM.
+    * 调用，以确保在此JVM中没有其他SparkContext在运行。
    *
    * Throws an exception if a running context is detected and logs a warning if another thread is
    * constructing a SparkContext.  This warning is necessary because the current locking scheme
    * prevents us from reliably distinguishing between cases where another context is being
    * constructed and cases where another constructor threw an exception.
+    * 如果检测到正在运行的上下文，则引发异常;如果另一个线程正在构造SparkContext，则记录警告。
+    * 这个警告是必要的，因为当前的锁定模式阻止我们可靠地区分构造另一个上下文的情况和构造函数抛出异常的情况。
    */
   private def assertNoOtherContextIsRunning(
       sc: SparkContext,
@@ -2301,13 +2304,17 @@ object SparkContext extends Logging {
    * This function may be used to get or instantiate a SparkContext and register it as a
    * singleton object. Because we can only have one active SparkContext per JVM,
    * this is useful when applications may wish to share a SparkContext.
+    * 此函数可用于获取或实例化SparkContext并将其注册为单例对象。
+    * 因为每个JVM只能有一个活动的SparkContext，所以当应用程序希望共享一个SparkContext时，这非常有用。
    *
    * @note This function cannot be used to create multiple SparkContext instances
    * even if multiple contexts are allowed.
+    * 即使允许多个上下文，也不能使用此函数创建多个SparkContext实例。
    */
   def getOrCreate(config: SparkConf): SparkContext = {
     // Synchronize to ensure that multiple create requests don't trigger an exception
     // from assertNoOtherContextIsRunning within setActiveContext
+    // 同步以确保多个create请求不会从setActiveContext中运行的assertnoothercontext触发异常
     SPARK_CONTEXT_CONSTRUCTOR_LOCK.synchronized {
       if (activeContext.get() == null) {
         setActiveContext(new SparkContext(config), allowMultipleContexts = false)
@@ -2358,6 +2365,7 @@ object SparkContext extends Logging {
   /**
    * Called at the end of the SparkContext constructor to ensure that no other SparkContext has
    * raced with this constructor and started.
+    * 在SparkContext构造函数的末尾调用，以确保没有其他SparkContext与此构造函数竞争并启动。
    */
   private[spark] def setActiveContext(
       sc: SparkContext,

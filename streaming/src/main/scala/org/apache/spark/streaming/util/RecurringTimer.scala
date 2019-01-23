@@ -64,7 +64,7 @@ class RecurringTimer(clock: Clock, period: Long, callback: (Long) => Unit, name:
   }
 
   /**
-   * Start at the earliest time it can start based on the period.
+   * Start at the earliest time it can start based on the period. 尽早开始，可以根据时间段开始。
    */
   def start(): Long = {
     start(getStartTime())
@@ -91,6 +91,7 @@ class RecurringTimer(clock: Clock, period: Long, callback: (Long) => Unit, name:
 
   private def triggerActionForNextInterval(): Unit = {
     clock.waitTillTime(nextTime)
+    // 定时执行回调函数，改函数为updateCurrentBuffer
     callback(nextTime)
     prevTime = nextTime
     nextTime += period
@@ -98,12 +99,14 @@ class RecurringTimer(clock: Clock, period: Long, callback: (Long) => Unit, name:
   }
 
   /**
-   * Repeatedly call the callback every interval.
+   * Repeatedly call the callback every interval. 每隔一段时间重复调用回调
+    * 数据块生成定时器真正处理的工作，该工作定时的执行回调函数，其为初始化数据块生成定时器传入的updateCurrentBuffer参数
+    * 在该函数中先把内存中数据currentbuffer赋值给newblockbuffer，然后把newblockbuffer封装成一个数据块，最后把数据块放到blockforpushing队列中。
    */
   private def loop() {
     try {
       while (!stopped) {
-        triggerActionForNextInterval()
+        triggerActionForNextInterval()  // 触发下一个间隔的动作
       }
       triggerActionForNextInterval()
     } catch {

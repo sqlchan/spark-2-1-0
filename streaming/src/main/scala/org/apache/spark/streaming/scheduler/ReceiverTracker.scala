@@ -461,6 +461,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     * 从ReceiverInputDStreams获取接收方，将它们作为并行集合分发到工作节点，并运行它们。
    */
   private def launchReceivers(): Unit = {
+    // 获取所有inputDStream中定义的流数据接收器
     val receivers = receiverInputStreams.map { nis =>
       val rcvr = nis.getReceiver()
       rcvr.setReceiverId(nis.id)
@@ -470,6 +471,7 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
     runDummySparkJob()
 
     logInfo("Starting " + receivers.length + " receivers")
+    // 向终端点发送分发并启动所有流数据接收器的消息
     endpoint.send(StartAllReceivers(receivers))
   }
 
@@ -625,9 +627,10 @@ class ReceiverTracker(ssc: StreamingContext, skipReceiverLaunch: Boolean = false
           if (TaskContext.get().attemptNumber() == 0) {
             val receiver = iterator.next()
             assert(iterator.hasNext == false)
+            //创建流数据接收管理器，用于监督该数据接收器
             val supervisor = new ReceiverSupervisorImpl(
               receiver, SparkEnv.get, serializableHadoopConf.value, checkpointDirOption)
-            supervisor.start()
+            supervisor.start()  //方法中调用自身的onstart和startreceiver方法；onstart中启动blockgenerator；在startreceive中完成流数据接收器的注册启动
             supervisor.awaitTermination()
           } else {
             // It's restarted by TaskScheduler, but we want to reschedule it again. So exit it.

@@ -130,8 +130,8 @@ private[streaming] abstract class ReceiverSupervisor(
 
   /** Start the supervisor  开始主管*/
   def start() {
-    onStart()
-    startReceiver()
+    onStart() // onstart中启动blockgenerator；
+    startReceiver() // 在startreceive中完成流数据接收器的注册启动
   }
 
   /** Mark the supervisor and the receiver for stopping  在主管和接收人停车时作记号*/
@@ -150,7 +150,7 @@ private[streaming] abstract class ReceiverSupervisor(
       if (onReceiverStart()) {
         logInfo(s"Starting receiver $streamId")
         receiverState = Started
-        receiver.onStart()
+        receiver.onStart()  //receiver的start方法，接受数据
         logInfo(s"Called receiver $streamId onStart")
       } else {
         // The driver refused us

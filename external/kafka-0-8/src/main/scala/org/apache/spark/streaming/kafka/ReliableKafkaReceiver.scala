@@ -43,10 +43,15 @@ import org.apache.spark.util.ThreadUtils
  * is that this receiver manages topic-partition/offset itself and updates the offset information
  * after data is reliably stored as write-ahead log. Offsets will only be updated when data is
  * reliably stored, so the potential data loss problem of KafkaReceiver can be eliminated.
+  * ReliableKafkaReceiver提供了可靠地将数据存储到BlockManager而不会丢失的能力。
+  * 默认情况下它是关闭的，当spark.stream.receiver.writeaheadlog 时将启用它。使是正确的。
+  * 与KafkaReceiver的不同之处在于，这个接收器管理主题分区/偏移量本身，并在可靠地将数据存储为写前日志之后更新偏移量信息。
+  * 偏移量只有在数据可靠存储时才会被更新，从而消除KafkaReceiver潜在的数据丢失问题。
  *
  * Note: ReliableKafkaReceiver will set auto.commit.enable to false to turn off automatic offset
  * commit mechanism in Kafka consumer. So setting this configuration manually within kafkaParams
  * will not take effect.
+  * ReliableKafkaReceiver将设置auto.commit.enable false来关闭Kafka使用者中的自动偏移提交机制。因此，在kafkaParams中手动设置此配置将不会生效
  */
 private[streaming]
 class ReliableKafkaReceiver[
@@ -63,7 +68,7 @@ class ReliableKafkaReceiver[
   private val AUTO_OFFSET_COMMIT = "auto.commit.enable"
   private def conf = SparkEnv.get.conf
 
-  /** High level consumer to connect to Kafka. */
+  /** High level consumer to connect to Kafka.  高级消费者连接Kafka*/
   private var consumerConnector: ConsumerConnector = null
 
   /** zkClient to connect to Zookeeper to commit the offsets. */
@@ -72,10 +77,12 @@ class ReliableKafkaReceiver[
   /**
    * A HashMap to manage the offset for each topic/partition, this HashMap is called in
    * synchronized block, so mutable HashMap will not meet concurrency issue.
+    * HashMap用于管理每个主题/分区的偏移量，这个HashMap在synchronized块中调用，因此可变HashMap不会遇到并发问题。
    */
   private var topicPartitionOffsetMap: mutable.HashMap[TopicAndPartition, Long] = null
 
-  /** A concurrent HashMap to store the stream block id and related offset snapshot. */
+  /** A concurrent HashMap to store the stream block id and related offset snapshot.
+    * 一个用于存储流块id和相关偏移快照的并发HashMap*/
   private var blockOffsetMap: ConcurrentHashMap[StreamBlockId, Map[TopicAndPartition, Long]] = null
 
   /**
@@ -84,19 +91,20 @@ class ReliableKafkaReceiver[
    */
   private var blockGenerator: BlockGenerator = null
 
-  /** Thread pool running the handlers for receiving message from multiple topics and partitions. */
+  /** Thread pool running the handlers for receiving message from multiple topics and partitions.
+    * 运行用于接收来自多个主题和分区的消息的处理程序的线程池。*/
   private var messageHandlerThreadPool: ThreadPoolExecutor = null
 
   override def onStart(): Unit = {
     logInfo(s"Starting Kafka Consumer Stream with group: $groupId")
 
-    // Initialize the topic-partition / offset hash map.
+    // Initialize the topic-partition / offset hash map. 初始化主题分区/偏移散列映射
     topicPartitionOffsetMap = new mutable.HashMap[TopicAndPartition, Long]
 
-    // Initialize the stream block id / offset snapshot hash map.
+    // Initialize the stream block id / offset snapshot hash map.  初始化流块id /偏移快照散列映射。
     blockOffsetMap = new ConcurrentHashMap[StreamBlockId, Map[TopicAndPartition, Long]]()
 
-    // Initialize the block generator for storing Kafka message.
+    // Initialize the block generator for storing Kafka message. 初始化用于存储Kafka消息的块生成器。
     blockGenerator = supervisor.createBlockGenerator(new GeneratedBlockHandler)
 
     if (kafkaParams.contains(AUTO_OFFSET_COMMIT) && kafkaParams(AUTO_OFFSET_COMMIT) == "true") {
@@ -108,7 +116,7 @@ class ReliableKafkaReceiver[
     kafkaParams.foreach(param => props.put(param._1, param._2))
     // Manually set "auto.commit.enable" to "false" no matter user explicitly set it to true,
     // we have to make sure this property is set to false to turn off auto commit mechanism in
-    // Kafka.
+    // Kafka. 我们必须确保将此属性设置为false，以关闭Kafka中的自动提交机制。
     props.setProperty(AUTO_OFFSET_COMMIT, "false")
 
     val consumerConfig = new ConsumerConfig(props)
@@ -177,7 +185,7 @@ class ReliableKafkaReceiver[
     }
   }
 
-  /** Store a Kafka message and the associated metadata as a tuple. */
+  /** Store a Kafka message and the associated metadata as a tuple.  将Kafka消息和相关的元数据存储为一个元组*/
   private def storeMessageAndMetadata(
       msgAndMetadata: MessageAndMetadata[K, V]): Unit = {
     val topicAndPartition = TopicAndPartition(msgAndMetadata.topic, msgAndMetadata.partition)
@@ -186,7 +194,7 @@ class ReliableKafkaReceiver[
     blockGenerator.addDataWithCallback(data, metadata)
   }
 
-  /** Update stored offset */
+  /** Update stored offset   更新存储抵消*/
   private def updateOffset(topicAndPartition: TopicAndPartition, offset: Long): Unit = {
     topicPartitionOffsetMap.put(topicAndPartition, offset)
   }
@@ -232,6 +240,7 @@ class ReliableKafkaReceiver[
   /**
    * Commit the offset of Kafka's topic/partition, the commit mechanism follow Kafka 0.8.x's
    * metadata schema in Zookeeper.
+    * 提交Kafka的主题/分区的偏移量，提交机制遵循Kafka 0.8。Zookeeper中的x元数据模式。
    */
   private def commitOffset(offsetMap: Map[TopicAndPartition, Long]): Unit = {
     if (zkClient == null) {
@@ -257,7 +266,7 @@ class ReliableKafkaReceiver[
     }
   }
 
-  /** Class to handle received Kafka message. */
+  /** Class to handle received Kafka message. 类处理接收的Kafka消息*/
   private final class MessageHandler(stream: KafkaStream[K, V]) extends Runnable {
     override def run(): Unit = {
       while (!isStopped) {

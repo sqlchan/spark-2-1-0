@@ -34,6 +34,7 @@ import org.apache.spark.annotation.DeveloperApi
 /**
  * :: DeveloperApi ::
  * Convenience methods for interacting with a Kafka cluster.
+  * 与Kafka集群交互的便利方法。
  * See <a href="https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol">
  * A Guide To The Kafka Protocol</a> for more details on individual api calls.
  * @param kafkaParams Kafka <a href="http://kafka.apache.org/documentation.html#configuration">
@@ -393,6 +394,9 @@ object KafkaCluster {
    * High-level kafka consumers connect to ZK.  ConsumerConfig assumes this use case.
    * Simple consumers connect directly to brokers, but need many of the same configs.
    * This subclass won't warn about missing ZK params, or presence of broker params.
+    * 高级kafka消费者连接到ZK。ConsumerConfig假设这个用例。
+    * 简单的使用者直接连接到代理，但是需要许多相同的配置。
+    * 这个子类不会对丢失ZK参数或代理参数的存在发出警告。
    */
   class SimpleConsumerConfig private(brokers: String, originalProps: Properties)
       extends ConsumerConfig(originalProps) {
@@ -409,6 +413,7 @@ object KafkaCluster {
     /**
      * Make a consumer config without requiring group.id or zookeeper.connect,
      * since communicating with brokers also needs common settings such as timeout
+      * 在不需要组的情况下进行使用者配置。id或管理员。连接，因为与代理通信也需要常见的设置，如超时
      */
     def apply(kafkaParams: Map[String, String]): SimpleConsumerConfig = {
       // These keys are from other pre-existing kafka configs for specifying brokers, accept either
