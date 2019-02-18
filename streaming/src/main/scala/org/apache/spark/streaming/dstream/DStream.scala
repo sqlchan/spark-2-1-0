@@ -91,7 +91,7 @@ abstract class DStream[T: ClassTag] (
   // =======================================================================
 
   // RDDs generated, marked as private[streaming] so that testsuites can access it
-  //  生成RDDs，标记为私有[流]，以便testsuites可以访问它
+  //  生成的RDDs，标记为私有[流]，以便testsuites可以访问它
   @transient
   private[streaming] var generatedRDDs = new HashMap[Time, RDD[T]]()
 

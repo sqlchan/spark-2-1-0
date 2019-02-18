@@ -38,6 +38,9 @@ import org.apache.spark.util.{AccumulatorV2, Clock, SystemClock, Utils}
  * handles locality-aware scheduling for this TaskSet via delay scheduling. The main interfaces
  * to it are resourceOffer, which asks the TaskSet whether it wants to run a task on one node,
  * and statusUpdate, which tells it that one of its tasks changed state (e.g. finished).
+  * 在taskscheduler erimpl中的单个任务集中调度任务。
+  * 该类跟踪每个任务，如果任务失败(最多不超过一定次数)，则重试任务，并通过延迟调度处理此任务集的位置感知调度。
+  * 它的主要接口是resourceOffer和statusUpdate，前者询问任务集是否希望在一个节点上运行任务，后者告诉它其中一个任务改变了状态(例如已完成)。
  *
  * THREADING: This class is designed to only be called from code with a lock on the
  * TaskScheduler (e.g. its event handlers). It should not be called from other threads.

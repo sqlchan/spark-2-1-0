@@ -531,7 +531,7 @@ class StreamingContext private[streaming] (
 
   /**
    * Create a unified DStream from multiple DStreams of the same type and same slide duration.
-    * 从相同类型和相同幻灯片持续时间的多个DStreams创建统一的DStream。
+    * 从相同类型和相同滑动间隔时间的多个DStreams创建统一的DStream。
    */
   def union[T: ClassTag](streams: Seq[DStream[T]]): DStream[T] = withScope {
     new UnionDStream[T](streams.toArray)
