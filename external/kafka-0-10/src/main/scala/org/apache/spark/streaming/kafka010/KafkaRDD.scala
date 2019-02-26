@@ -35,11 +35,15 @@ import org.apache.spark.storage.StorageLevel
  * A batch-oriented interface for consuming from Kafka.
  * Starting and ending offsets are specified in advance,
  * so that you can control exactly-once semantics.
- * @param kafkaParams Kafka
+  * 用于从Kafka消费的面向批处理的接口。
+  * 开始和结束偏移量是预先指定的，
+  * 这样就可以精确地控制一次语义。
+  * @param kafkaParams Kafka
  * <a href="http://kafka.apache.org/documentation.html#newconsumerconfigs">
  * configuration parameters</a>. Requires "bootstrap.servers" to be set
  * with Kafka broker(s) specified in host1:port1,host2:port2 form.
  * @param offsetRanges offset ranges that define the Kafka data belonging to this RDD
+  *                     定义属于此RDD的Kafka数据的偏移范围
  * @param preferredHosts map from TopicPartition to preferred host for processing that partition.
  * In most cases, use [[DirectKafkaInputDStream.preferConsistent]]
  * Use [[DirectKafkaInputDStream.preferBrokers]] if your executors are on same nodes as brokers.
@@ -77,7 +81,7 @@ private[spark] class KafkaRDD[K, V](
 
   override def persist(newLevel: StorageLevel): this.type = {
     logError("Kafka ConsumerRecord is not serializable. " +
-      "Use .map to extract fields before calling .persist or .window")
+      "Use .map to extract fields before calling .persist or .window 在调用持久存储或窗口之前，使用map提取字段")
     super.persist(newLevel)
   }
 
@@ -109,6 +113,7 @@ private[spark] class KafkaRDD[K, V](
     }
 
     // Determine in advance how many messages need to be taken from each partition
+    // 预先确定需要从每个分区获取多少消息
     val parts = nonEmptyPartitions.foldLeft(Map[Int, Int]()) { (result, part) =>
       val remain = num - result.values.sum
       if (remain > 0) {

@@ -89,17 +89,17 @@ private[kafka010] class KafkaTestUtils extends Logging {
       throw new IllegalStateException("Zookeeper client is not yet initialized"))
   }
 
-  // Set up the Embedded Zookeeper server and get the proper Zookeeper port
+  // Set up the Embedded Zookeeper server and get the proper Zookeeper port 设置嵌入式Zookeeper服务器，并获取适当的Zookeeper端口
   private def setupEmbeddedZookeeper(): Unit = {
     // Zookeeper server startup
     zookeeper = new EmbeddedZookeeper(s"$zkHost:$zkPort")
-    // Get the actual zookeeper binding port
+    // Get the actual zookeeper binding port 获取实际的zookeeper绑定端口
     zkPort = zookeeper.actualPort
     zkUtils = ZkUtils(s"$zkHost:$zkPort", zkSessionTimeout, zkConnectionTimeout, false)
     zkReady = true
   }
 
-  // Set up the Embedded Kafka server
+  // Set up the Embedded Kafka server  设置嵌入式Kafka服务器
   private def setupEmbeddedKafkaServer(): Unit = {
     assert(zkReady, "Zookeeper should be set up beforehand")
 
@@ -122,7 +122,7 @@ private[kafka010] class KafkaTestUtils extends Logging {
     setupEmbeddedKafkaServer()
   }
 
-  /** Teardown the whole servers, including Kafka broker and Zookeeper */
+  /** Teardown the whole servers, including Kafka broker and Zookeeper  关闭所有服务器，包括Kafka broker和Zookeeper*/
   def teardown(): Unit = {
     brokerReady = false
     zkReady = false

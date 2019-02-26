@@ -35,13 +35,15 @@ import org.apache.spark.streaming.dstream._
 /**
  * :: Experimental ::
  * object for constructing Kafka streams and RDDs
+  * 对象，用于构造Kafka流和RDDs
  */
 @Experimental
 object KafkaUtils extends Logging {
   /**
    * :: Experimental ::
    * Scala constructor for a batch-oriented interface for consuming from Kafka.
-   * Starting and ending offsets are specified in advance,
+    * 用于从Kafka消费的面向批处理的接口的Scala构造函数。
+   * Starting and ending offsets are specified in advance, 开始和结束偏移量是预先指定的，
    * so that you can control exactly-once semantics.
    * @param kafkaParams Kafka
    * <a href="http://kafka.apache.org/documentation.html#newconsumerconfigs">
@@ -107,6 +109,7 @@ object KafkaUtils extends Logging {
    * :: Experimental ::
    * Scala constructor for a DStream where
    * each given Kafka topic/partition corresponds to an RDD partition.
+    * DStream的Scala构造函数，其中每个给定的Kafka主题/分区对应一个RDD分区。
    * The spark configuration spark.streaming.kafka.maxRatePerPartition gives the maximum number
    *  of messages
    * per second that each '''partition''' will accept.
@@ -203,15 +206,28 @@ object KafkaUtils extends Logging {
 
   /**
    * Tweak kafka params to prevent issues on executors
+    * 调整kafka参数以防止执行器出现问题
    */
   private[kafka010] def fixKafkaParams(kafkaParams: ju.HashMap[String, Object]): Unit = {
+    // enable.auto.commit = false  如果为真，使用者的偏移量将在后台定期提交。
     logWarning(s"overriding ${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG} to false for executor")
     kafkaParams.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false: java.lang.Boolean)
 
+    // auto.offset.reset = none
+    /**
+      * 如果Kafka中没有初始偏移量，或者服务器上不再存在当前偏移量(例如，因为数据已被删除)，该怎么办:
+      * 最早:自动重置偏移到最早的偏移
+      * 最新:自动将偏移量重置为最新偏移量
+      * none:如果没有为使用者的组找到以前的偏移量，则向使用者抛出exception
+      * 其他:向使用者抛出异常。
+      */
     logWarning(s"overriding ${ConsumerConfig.AUTO_OFFSET_RESET_CONFIG} to none for executor")
     kafkaParams.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "none")
 
     // driver and executor should be in different consumer groups
+    // 驱动程序和执行程序应该位于不同的使用者组中
+    // 标识此使用者所属的使用者组的唯一字符串。
+    // 如果使用者使用<code>subscribe(topic)</code>或基于kafka的偏移量管理策略来使用组管理功能，则需要此属性。
     val originalGroupId = kafkaParams.get(ConsumerConfig.GROUP_ID_CONFIG)
     if (null == originalGroupId) {
       logError(s"${ConsumerConfig.GROUP_ID_CONFIG} is null, you should probably set it")
@@ -220,7 +236,8 @@ object KafkaUtils extends Logging {
     logWarning(s"overriding executor ${ConsumerConfig.GROUP_ID_CONFIG} to ${groupId}")
     kafkaParams.put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
 
-    // possible workaround for KAFKA-3135
+    // possible workaround for KAFKA-3135  KAFKA-3135可能的解决方案
+    // 读取数据时使用的TCP接收缓冲区(SO_RCVBUF)的大小  65536
     val rbb = kafkaParams.get(ConsumerConfig.RECEIVE_BUFFER_CONFIG)
     if (null == rbb || rbb.asInstanceOf[java.lang.Integer] < 65536) {
       logWarning(s"overriding ${ConsumerConfig.RECEIVE_BUFFER_CONFIG} to 65536 see KAFKA-3135")

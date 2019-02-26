@@ -117,10 +117,10 @@ class DirectKafkaStreamSuite
     }
     val allReceived = new ConcurrentLinkedQueue[(String, String)]()
 
-    // hold a reference to the current offset ranges, so it can be used downstream
+    // hold a reference to the current offset ranges, so it can be used downstream 保存对当前偏移范围的引用，以便在下游使用
     var offsetRanges = Array[OffsetRange]()
     val tf = stream.transform { rdd =>
-      // Get the offset ranges in the RDD
+      // Get the offset ranges in the RDD 获取RDD中的偏移范围
       offsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
       rdd.map(r => (r.key, r.value))
     }
@@ -131,7 +131,7 @@ class DirectKafkaStreamSuite
       }
       val collected = rdd.mapPartitionsWithIndex { (i, iter) =>
       // For each partition, get size of the range in the partition,
-      // and the number of items in the partition
+      // and the number of items in the partition  对于每个分区，获取分区中的范围大小和分区中的项数
         val off = offsetRanges(i)
         val all = iter.toSeq
         val partSize = all.size
@@ -140,7 +140,7 @@ class DirectKafkaStreamSuite
       }.collect
 
       // Verify whether number of elements in each partition
-      // matches with the corresponding offset range
+      // matches with the corresponding offset range  验证每个分区中的元素数量是否与相应的偏移范围匹配
       collected.foreach { case (partSize, rangeSize) =>
         assert(partSize === rangeSize, "offset ranges are wrong")
       }

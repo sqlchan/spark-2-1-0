@@ -30,6 +30,8 @@ import org.apache.spark.internal.Logging
  * Consumer of single topicpartition, intended for cached reuse.
  * Underlying consumer is not threadsafe, so neither is this,
  * but processing the same topicpartition and group id in multiple threads is usually bad anyway.
+  * 用于缓存重用的单个topicpartition的使用者。底层使用者不是线程安全的，所以这也不是，
+  * 但是在多个线程中处理相同的topicpartition和组id通常是不好的。
  */
 private[kafka010]
 class CachedKafkaConsumer[K, V] private(
@@ -52,7 +54,8 @@ class CachedKafkaConsumer[K, V] private(
   }
 
   // TODO if the buffer was kept around as a random-access structure,
-  // could possibly optimize re-calculating of an RDD in the same batch
+  // 如果缓冲区是作为随机访问结构保留的，则需要执行以下操作
+  // could possibly optimize re-calculating of an RDD in the same batch 能否在同一批中优化重新计算RDD
   protected var buffer = ju.Collections.emptyList[ConsumerRecord[K, V]]().iterator
   protected var nextOffset = -2L
 
@@ -60,7 +63,9 @@ class CachedKafkaConsumer[K, V] private(
 
   /**
    * Get the record for the given offset, waiting up to timeout ms if IO is necessary.
+    * 获取给定偏移量的记录，如果需要IO，等待超时ms。
    * Sequential forward access will use buffers, but random access will be horribly inefficient.
+    * 顺序向前访问将使用缓冲区，但随机访问将非常低效
    */
   def get(offset: Long, timeout: Long): ConsumerRecord[K, V] = {
     logDebug(s"Get $groupId $topic $partition nextOffset $nextOffset requested $offset")
@@ -110,9 +115,11 @@ object CachedKafkaConsumer extends Logging {
   private case class CacheKey(groupId: String, topic: String, partition: Int)
 
   // Don't want to depend on guava, don't want a cleanup thread, use a simple LinkedHashMap
+  // 不要依赖guava，不要清理线程，使用一个简单的LinkedHashMap
   private var cache: ju.LinkedHashMap[CacheKey, CachedKafkaConsumer[_, _]] = null
 
-  /** Must be called before get, once per JVM, to configure the cache. Further calls are ignored */
+  /** Must be called before get, once per JVM, to configure the cache. Further calls are ignored
+    * 在配置缓存之前，每个JVM必须调用一次get。忽略其他调用 */
   def init(
       initialCapacity: Int,
       maxCapacity: Int,
@@ -142,6 +149,7 @@ object CachedKafkaConsumer extends Logging {
   /**
    * Get a cached consumer for groupId, assigned to topic and partition.
    * If matching consumer doesn't already exist, will be created using kafkaParams.
+    * 为groupId获取缓存的使用者，并将其分配给主题和分区。如果匹配的使用者还不存在，将使用kafkaParams创建。
    */
   def get[K, V](
       groupId: String,
@@ -166,6 +174,7 @@ object CachedKafkaConsumer extends Logging {
   /**
    * Get a fresh new instance, unassociated with the global cache.
    * Caller is responsible for closing
+    * 获取与全局缓存无关的新实例。
    */
   def getUncached[K, V](
       groupId: String,

@@ -37,11 +37,11 @@ import org.apache.spark.streaming.scheduler.{RateController, StreamInputInfo}
 import org.apache.spark.streaming.scheduler.rate.RateEstimator
 
 /**
- *  A DStream where
- * each given Kafka topic/partition corresponds to an RDD partition.
- * The spark configuration spark.streaming.kafka.maxRatePerPartition gives the maximum number
- *  of messages
- * per second that each '''partition''' will accept.
+ *  A DStream where each given Kafka topic/partition corresponds to an RDD partition.
+ * 每个给定Kafka主题/分区对应一个RDD分区的DStream。
+ * The spark configuration spark.streaming.kafka.maxRatePerPartition gives the maximum number of messages
+  * per second that each '''partition''' will accept.
+ *  maxRatePerPartition给出每个“分区”每秒将接受的最大消息数。
  * @param locationStrategy In most cases, pass in [[PreferConsistent]],
  *   see [[LocationStrategy]] for more details.
  * @param executorKafkaParams Kafka
@@ -163,11 +163,12 @@ private[spark] class DirectKafkaInputDStream[K, V](
   /**
    * The concern here is that poll might consume messages despite being paused,
    * which would throw off consumer position.  Fix position if this happens.
+    * 这里的问题是，轮询可能会在暂停的情况下使用消息，这将脱离消费者的立场。如果发生这种情况，固定位置。
    */
   private def paranoidPoll(c: Consumer[K, V]): Unit = {
     val msgs = c.poll(0)
     if (!msgs.isEmpty) {
-      // position should be minimum offset per topicpartition
+      // position should be minimum offset per topicpartition 位置应该是每个主题分区的最小偏移量
       msgs.asScala.foldLeft(Map[TopicPartition, Long]()) { (acc, m) =>
         val tp = new TopicPartition(m.topic, m.partition)
         val off = acc.get(tp).map(o => Math.min(o, m.offset)).getOrElse(m.offset)
@@ -181,24 +182,25 @@ private[spark] class DirectKafkaInputDStream[K, V](
 
   /**
    * Returns the latest (highest) available offsets, taking new partitions into account.
+    * 返回考虑新分区的最新(最高)可用偏移量
    */
   protected def latestOffsets(): Map[TopicPartition, Long] = {
     val c = consumer
     paranoidPoll(c)
     val parts = c.assignment().asScala
 
-    // make sure new partitions are reflected in currentOffsets
+    // make sure new partitions are reflected in currentOffsets 确保新的分区反映在currentoffset中
     val newPartitions = parts.diff(currentOffsets.keySet)
-    // position for new partitions determined by auto.offset.reset if no commit
+    // position for new partitions determined by auto.offset.reset if no commit 由auto.offset确定的新分区的位置。如果没有提交则重置
     currentOffsets = currentOffsets ++ newPartitions.map(tp => tp -> c.position(tp)).toMap
-    // don't want to consume messages, so pause
+    // don't want to consume messages, so pause 不想使用消息，所以请暂停
     c.pause(newPartitions.asJava)
-    // find latest available offsets
+    // find latest available offsets  查找最新可用的偏移量
     c.seekToEnd(currentOffsets.keySet.asJava)
     parts.map(tp => tp -> c.position(tp)).toMap
   }
 
-  // limits the maximum number of messages per partition
+  // limits the maximum number of messages per partition  限制每个分区的最大消息数
   protected def clamp(
     offsets: Map[TopicPartition, Long]): Map[TopicPartition, Long] = {
 
@@ -220,14 +222,16 @@ private[spark] class DirectKafkaInputDStream[K, V](
       context.sparkContext, executorKafkaParams, offsetRanges.toArray, getPreferredHosts, true)
 
     // Report the record number and metadata of this batch interval to InputInfoTracker.
+    // 向InputInfoTracker报告此批处理间隔的记录号和元数据。
     val description = offsetRanges.filter { offsetRange =>
-      // Don't display empty ranges.
+      // Don't display empty ranges.  不要显示空范围。
       offsetRange.fromOffset != offsetRange.untilOffset
     }.map { offsetRange =>
       s"topic: ${offsetRange.topic}\tpartition: ${offsetRange.partition}\t" +
         s"offsets: ${offsetRange.fromOffset} to ${offsetRange.untilOffset}"
     }.mkString("\n")
     // Copy offsetRanges to immutable.List to prevent from being modified by the user
+    // 将setranges复制到不可变。列表以防止被用户修改
     val metadata = Map(
       "offsets" -> offsetRanges.toList,
       StreamInputInfo.METADATA_KEY_DESCRIPTION -> description)
@@ -263,6 +267,7 @@ private[spark] class DirectKafkaInputDStream[K, V](
 
   /**
    * Queue up offset ranges for commit to Kafka at a future time.  Threadsafe.
+    * 在将来的某个时间，为提交到Kafka的操作排队等待偏移量范围。线程安全的。
    * @param offsetRanges The maximum untilOffset for a given partition will be used at commit.
    */
   def commitAsync(offsetRanges: Array[OffsetRange]): Unit = {

@@ -29,10 +29,13 @@ import org.apache.spark.annotation.Experimental
 /**
  *  :: Experimental ::
  * Choice of how to schedule consumers for a given TopicPartition on an executor.
+  * 选择如何为执行程序上的给定主题分区调度使用者
  * See [[LocationStrategies]] to obtain instances.
  * Kafka 0.10 consumers prefetch messages, so it's important for performance
  * to keep cached consumers on appropriate executors, not recreate them for every partition.
  * Choice of location is only a preference, not an absolute; partitions may be scheduled elsewhere.
+  * Kafka 0.10使用者预取消息，因此在适当的执行器上保存缓存的使用者对于性能很重要，
+  * 而不是为每个分区重新创建它们。地点的选择只是一种偏好，而不是绝对的;分区可以安排在其他地方。
  */
 @Experimental
 sealed abstract class LocationStrategy
@@ -60,6 +63,7 @@ object LocationStrategies {
   /**
    *  :: Experimental ::
    * Use this in most cases, it will consistently distribute partitions across all executors.
+    * 在大多数情况下，它将一致地跨所有执行器分布分区
    */
   @Experimental
   def PreferConsistent: LocationStrategy =

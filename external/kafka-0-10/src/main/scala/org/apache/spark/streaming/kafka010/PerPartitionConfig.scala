@@ -26,18 +26,19 @@ import org.apache.spark.annotation.Experimental
  * :: Experimental ::
  * Interface for user-supplied configurations that can't otherwise be set via Spark properties,
  * because they need tweaking on a per-partition basis,
+  * 接口为用户提供的配置，否则无法通过Spark属性设置，因为它们需要在每个分区的基础上进行调整，
  */
 @Experimental
 abstract class PerPartitionConfig extends Serializable {
   /**
    *  Maximum rate (number of records per second) at which data will be read
-   *  from each Kafka partition.
+   *  from each Kafka partition. 从每个Kafka分区读取数据的最大速率(每秒记录数)。
    */
   def maxRatePerPartition(topicPartition: TopicPartition): Long
 }
 
 /**
- * Default per-partition configuration
+ * Default per-partition configuration 默认每个分区配置
  */
 private class DefaultPerPartitionConfig(conf: SparkConf)
     extends PerPartitionConfig {

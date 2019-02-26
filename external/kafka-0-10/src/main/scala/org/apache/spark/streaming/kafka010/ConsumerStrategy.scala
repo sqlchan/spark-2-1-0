@@ -32,10 +32,13 @@ import org.apache.spark.internal.Logging
  * :: Experimental ::
  * Choice of how to create and configure underlying Kafka Consumers on driver and executors.
  * See [[ConsumerStrategies]] to obtain instances.
+  * 选择如何在驱动程序和执行程序上创建和配置底层Kafka使用者。
  * Kafka 0.10 consumers can require additional, sometimes complex, setup after object
  *  instantiation. This interface encapsulates that process, and allows it to be checkpointed.
+  *  在对象实例化之后，消费者可能需要额外的，有时是复杂的设置。该接口封装了该流程，并允许对其进行检查点。
  * @tparam K type of Kafka message key
  * @tparam V type of Kafka message value
+  *      Strategy     策略
  */
 @Experimental
 abstract class ConsumerStrategy[K, V] {
@@ -48,23 +51,29 @@ abstract class ConsumerStrategy[K, V] {
 
   /**
    * Must return a fully configured Kafka Consumer, including subscribed or assigned topics.
+    * 必须返回完整配置的Kafka使用者，包括订阅或分配的主题。
    * See <a href="http://kafka.apache.org/documentation.html#newconsumerapi">Kafka docs</a>.
    * This consumer will be used on the driver to query for offsets only, not messages.
+    * 此使用者将在驱动程序上仅用于查询偏移量，而不是消息。
    * The consumer must be returned in a state that it is safe to call poll(0) on.
+    * 必须以轮询(0)是安全的状态返回使用者。
    * @param currentOffsets A map from TopicPartition to offset, indicating how far the driver
    * has successfully read.  Will be empty on initial start, possibly non-empty on restart from
    * checkpoint.
+    * 从TopicPartition到offset的映射，指示驱动程序成功读取的距离。初始启动时为空，从检查点重新启动时可能为非空。
    */
   def onStart(currentOffsets: ju.Map[TopicPartition, jl.Long]): Consumer[K, V]
 }
 
 /**
  * Subscribe to a collection of topics.
+  * 订阅主题集合。
  * @param topics collection of topics to subscribe
  * @param kafkaParams Kafka
  * <a href="http://kafka.apache.org/documentation.html#newconsumerconfigs">
  * configuration parameters</a> to be used on driver. The same params will be used on executors,
  * with minor automatic modifications applied.
+  * Kafka配置参数用于驱动程序。相同的参数将用于执行器，并应用少量的自动修改。
  *  Requires "bootstrap.servers" to be set
  * with Kafka broker(s) specified in host1:port1,host2:port2 form.
  * @param offsets: offsets to begin at on initial startup.  If no offset is given for a
@@ -105,6 +114,7 @@ private case class Subscribe[K, V](
           consumer.seek(topicPartition, offset)
       }
       // we've called poll, we must pause or next poll may consume messages and set position
+      // 我们已经调用了poll，我们必须暂停，否则下一次poll可能会使用消息并设置位置
       consumer.pause(consumer.assignment())
     }
 
@@ -114,7 +124,9 @@ private case class Subscribe[K, V](
 
 /**
  * Subscribe to all topics matching specified pattern to get dynamically assigned partitions.
+  * 订阅与指定模式匹配的所有主题，以获得动态分配的分区。
  * The pattern matching will be done periodically against topics existing at the time of check.
+  * 模式匹配将针对检查时存在的主题定期进行。
  * @param pattern pattern to subscribe to
  * @param kafkaParams Kafka
  * <a href="http://kafka.apache.org/documentation.html#newconsumerconfigs">
@@ -166,6 +178,7 @@ private case class SubscribePattern[K, V](
 
 /**
  * Assign a fixed collection of TopicPartitions
+  * 分配一组固定的主题分区
  * @param topicPartitions collection of TopicPartitions to assign
  * @param kafkaParams Kafka
  * <a href="http://kafka.apache.org/documentation.html#newconsumerconfigs">
@@ -213,6 +226,7 @@ object ConsumerStrategies {
   /**
    *  :: Experimental ::
    * Subscribe to a collection of topics.
+    * 订阅主题集合。
    * @param topics collection of topics to subscribe
    * @param kafkaParams Kafka
    * <a href="http://kafka.apache.org/documentation.html#newconsumerconfigs">
